@@ -35,7 +35,7 @@ export function Navbar({
           <Menu className="h-5 w-5" />
         </button>
         <Link href={`/${locale}`} className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-black text-white shadow-sm">
             <span className="text-xs font-bold tracking-tight">HNV</span>
           </span>
           <span className="hidden text-sm font-semibold tracking-tight sm:inline">{siteName}</span>
