@@ -1,0 +1,69 @@
+---
+title: "Khung tư duy System Design"
+order: 2
+level: "advanced"
+description: "Cách tiếp cận có cấu trúc cho buổi phỏng vấn thiết kế hệ thống."
+tags: ["system-design", "scalability"]
+---
+
+## Khung 5 bước
+
+1. **Clarify** — Hỏi requirement (functional + non-functional + scale).
+2. **Estimate** — Tính throughput, storage, bandwidth.
+3. **High-level design** — Vẽ các component chính.
+4. **Deep dive** — Đi sâu 1-2 component theo gợi ý interviewer.
+5. **Trade-offs** — Nêu trade-off mỗi quyết định.
+
+## Bước 1: Clarify
+
+Hỏi:
+
+- Bao nhiêu user? DAU, MAU?
+- Read-heavy hay write-heavy?
+- Có cần real-time không?
+- Geo-distribution?
+- Yêu cầu nhất quán (strict / eventual)?
+- SLA: 99.9% hay 99.99%?
+
+## Bước 2: Estimate (back-of-envelope)
+
+Ví dụ Twitter:
+
+- 300M DAU × 2 tweet → 600M tweet/day → ~7000 TPS.
+- Read:Write = 100:1 → 700K read/s.
+- Tweet 300 bytes → 600M × 300 = 180GB/day.
+
+## Bước 3: High-level design
+
+Các block cơ bản:
+
+```
+[Client] → [LB] → [Web/App] → [Cache] → [DB]
+                       ↓
+                   [Queue] → [Worker] → [Storage]
+```
+
+Thường có: **CDN**, **Load Balancer**, **API Gateway**, **Service**, **Cache (Redis)**, **DB (Postgres/Cassandra)**, **Object Store (S3)**, **Message Queue (Kafka)**, **Search (Elastic)**.
+
+## Bước 4: Deep dive — các vấn đề kinh điển
+
+- **Caching strategy**: write-through vs write-back vs cache-aside.
+- **Sharding**: by user_id hash? geographic? consistent hashing?
+- **Replication**: master-slave? multi-master?
+- **Read your own writes**, **monotonic reads**.
+- **Idempotency keys** cho retry.
+- **Rate limiting** (token bucket / leaky bucket).
+- **Circuit breaker** + **bulkhead**.
+
+## Bước 5: Trade-off
+
+Đừng nói "tôi dùng X". Nói "tôi dùng X **vì** Y; trade-off là Z; nếu yêu cầu thay đổi sẽ chọn W".
+
+<Callout type="tip">
+Interviewer chấm điểm **tư duy** chứ không phải đáp án "đúng". Hãy nghĩ to (think aloud), vẽ rõ, và sẵn sàng sửa khi nhận hint.
+</Callout>
+
+## Đọc thêm
+
+- "Designing Data-Intensive Applications" — Martin Kleppmann.
+- System Design Primer (GitHub).

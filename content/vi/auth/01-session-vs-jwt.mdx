@@ -1,0 +1,54 @@
+---
+title: "Session vs JWT"
+order: 1
+level: "beginner"
+description: "Hai cách quản lý đăng nhập phổ biến nhất và trade-off của chúng."
+tags: ["auth", "session", "jwt"]
+---
+
+## Session-based auth
+
+1. User login → server tạo **session** lưu ở Redis/DB.
+2. Server trả về **session ID** trong cookie.
+3. Mỗi request, server tra cứu session từ ID → biết user là ai.
+
+✅ Logout = xóa session ở server (tức thì).
+✅ Linh hoạt thay đổi quyền real-time.
+❌ Cần lưu state ở server → khó scale ngang.
+
+## JWT (JSON Web Token)
+
+```
+header.payload.signature
+```
+
+User info nhúng vào **payload**, ký bằng secret/private key. Server không cần lưu state.
+
+1. User login → server tạo JWT, ký, gửi về.
+2. Client gửi JWT trong header `Authorization: Bearer <token>`.
+3. Server **verify chữ ký** → trust payload.
+
+✅ Stateless → scale ngang dễ.
+✅ Dùng được cross-service (microservices).
+❌ Không revoke được trước khi expire (trừ khi có blacklist).
+❌ Payload public (chỉ encode base64, không mã hóa).
+
+## So sánh
+
+| | Session | JWT |
+|---|---|---|
+| State | Server | Client |
+| Revoke | Tức thì | Khó (cần blacklist) |
+| Size | Nhỏ (ID) | Lớn (chứa data) |
+| Cross-domain | Cookie SameSite cản | Header tự do |
+| Scale | Cần shared store | Stateless |
+
+<Callout type="warning">
+JWT **không phải** là phương án bảo mật hơn session. Nó chỉ stateless hơn. Nhiều người dùng sai: lưu JWT trong localStorage → dễ bị XSS đánh cắp.
+</Callout>
+
+## Best practice
+
+- **Access token** (JWT) ngắn hạn (5-15 phút) + **refresh token** dài hạn lưu HttpOnly cookie.
+- JWT không bao giờ chứa thông tin nhạy cảm (password, PII).
+- Dùng `RS256` (asymmetric) nếu nhiều service cần verify.

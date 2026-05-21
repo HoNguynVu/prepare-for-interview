@@ -1,0 +1,54 @@
+---
+title: "Git nâng cao"
+order: 3
+level: "intermediate"
+description: "Rebase vs merge, cherry-pick, reset vs revert, workflow chuẩn."
+tags: ["git", "workflow"]
+---
+
+## Rebase vs Merge
+
+- **Merge**: tạo commit kết nối 2 nhánh. Lịch sử trung thực, có thể rối.
+- **Rebase**: viết lại lịch sử của feature branch sao cho nối thẳng vào main. Lịch sử sạch, nhưng *đổi hash*.
+
+```bash
+git checkout feature
+git rebase main      # apply commits của feature lên đỉnh main
+```
+
+**Quy tắc vàng**: không bao giờ rebase nhánh đã push public.
+
+## Reset vs Revert
+
+| | reset | revert |
+|---|---|---|
+| Lịch sử | Viết lại | Giữ nguyên |
+| Tạo commit mới | Không (mặc định) | Có |
+| An toàn share | ❌ Không nếu đã push | ✅ Luôn an toàn |
+
+## Cherry-pick
+
+Lấy 1 commit từ nhánh khác đem qua nhánh hiện tại:
+
+```bash
+git cherry-pick abc1234
+```
+
+Hữu ích khi hotfix cần đưa vào nhiều nhánh.
+
+## Workflow phổ biến
+
+- **Git Flow** — master/develop/feature/release/hotfix. Phức tạp, hợp release theo phiên bản.
+- **GitHub Flow** — main + feature branch. Đơn giản, hợp continuous deployment.
+- **Trunk-based** — push thẳng main, feature flag để ẩn. Cần kỷ luật cao.
+
+<Callout type="tip">
+Câu hỏi hay: "Bạn lỡ commit nhầm file `.env` chứa secret, đã push. Làm gì?" → revert + **rotate secret ngay** (vì nó đã ở trên server từ giờ). `git rebase` xóa lịch sử *không* xoá được secret đã lộ.
+</Callout>
+
+## Lệnh "cứu mạng"
+
+- `git reflog` — lịch sử HEAD cục bộ, cứu khi reset nhầm.
+- `git stash` — gói thay đổi tạm.
+- `git bisect` — binary search tìm commit gây bug.
+- `git blame` — ai đụng dòng này, khi nào.

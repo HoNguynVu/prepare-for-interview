@@ -1,0 +1,44 @@
+---
+title: "TCP vs UDP"
+order: 2
+level: "beginner"
+description: "Phân biệt hai giao thức Transport phổ biến và khi nào nên dùng cái nào."
+tags: ["network", "tcp", "udp"]
+---
+
+## So sánh nhanh
+
+| Tiêu chí | TCP | UDP |
+|---|---|---|
+| Kết nối | Có (handshake) | Không |
+| Tin cậy | ✅ Đảm bảo nhận đủ, đúng thứ tự | ❌ Có thể mất gói |
+| Tốc độ | Chậm hơn | Nhanh hơn |
+| Header | 20 bytes | 8 bytes |
+| Ứng dụng | HTTP, SSH, SMTP | DNS, video call, game |
+
+## 3-way handshake (TCP)
+
+```
+Client                Server
+  |  ---- SYN ---->     |
+  |  <-- SYN-ACK --     |
+  |  ---- ACK ---->     |
+  |                     |
+  |  <== data ==>       |
+```
+
+## Khi nào dùng UDP?
+
+- **Streaming**: mất vài frame không sao, nhưng phải real-time.
+- **DNS query**: gói nhỏ, retry rẻ hơn handshake.
+- **Game online**: latency quan trọng hơn vài gói rớt.
+
+<Callout type="note">
+HTTP/3 chạy trên **QUIC** — QUIC dùng UDP làm transport nhưng cài đặt lại reliability ở tầng trên. Đây là một câu hỏi follow-up hay gặp ở level cao.
+</Callout>
+
+## Câu hỏi mở rộng
+
+- "Khi gói TCP rớt, điều gì xảy ra?" — Receiver không gửi ACK → Sender retransmit sau timeout (RTO).
+- "TCP đảm bảo thứ tự thế nào?" — Mỗi byte có sequence number; receiver sắp lại theo seq.
+- "Vì sao UDP vẫn quan trọng?" — TCP không phù hợp cho real-time và many-to-many.

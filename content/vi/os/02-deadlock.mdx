@@ -1,0 +1,60 @@
+---
+title: "Deadlock"
+order: 2
+level: "intermediate"
+description: "4 điều kiện gây deadlock và cách phòng tránh."
+tags: ["os", "concurrency", "deadlock"]
+---
+
+## Deadlock là gì?
+
+Một tình huống nhiều thread/process **chờ nhau mãi**, không ai tiến lên được.
+
+Ví dụ kinh điển — *Dining philosophers*: 5 triết gia, mỗi người cần 2 chiếc đũa để ăn, nhưng mỗi người chỉ cầm 1 chiếc và chờ chiếc còn lại.
+
+## 4 điều kiện cần (Coffman conditions)
+
+Deadlock xảy ra khi cả 4 đều đúng:
+
+1. **Mutual exclusion** — Tài nguyên không chia sẻ được.
+2. **Hold and wait** — Giữ tài nguyên này, chờ tài nguyên khác.
+3. **No preemption** — Không thể tước đoạt tài nguyên.
+4. **Circular wait** — Có chu trình chờ.
+
+Phá vỡ **bất kỳ** điều kiện nào → hết deadlock.
+
+## Cách phòng tránh
+
+### 1. Lock ordering
+
+Tất cả thread lấy lock theo **cùng thứ tự**. Phá vỡ *circular wait*.
+
+```java
+// luôn lock account.id nhỏ trước
+synchronized (a.id < b.id ? a : b) {
+    synchronized (a.id < b.id ? b : a) {
+        // transfer
+    }
+}
+```
+
+### 2. Try-lock với timeout
+
+```java
+if (lockA.tryLock(1, SECONDS)) {
+    try {
+        if (lockB.tryLock(1, SECONDS)) { ... }
+    } finally { lockA.unlock(); }
+}
+```
+
+### 3. Tránh nested lock — dùng **lock-free** structure (CAS, atomic).
+
+<Callout type="warning">
+**Livelock** ≠ deadlock. Livelock: các thread vẫn chạy nhưng cứ retry mãi mà không tiến triển (ví dụ 2 người tránh nhau trên hành lang).
+</Callout>
+
+## Câu hỏi follow-up
+
+- "Detection vs prevention?" — Prevention: thiết kế tránh; Detection: phát hiện rồi unwind (như Postgres detect deadlock và abort 1 transaction).
+- "Banker's algorithm dùng để làm gì?" — Tránh deadlock bằng cách kiểm tra state an toàn trước khi cấp tài nguyên.

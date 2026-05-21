@@ -1,0 +1,47 @@
+---
+title: "Introduction to OOP"
+order: 1
+level: "beginner"
+description: "An overview of Object-Oriented Programming and why it matters in interviews."
+tags: ["oop", "fundamentals"]
+---
+
+## What is OOP?
+
+**Object-Oriented Programming** is a paradigm that organises code around *objects* rather than functions and logic. Each object bundles related **data** (attributes) and **behavior** (methods).
+
+<Callout type="tip">
+A very common interview question: "Explain OOP with a real-world example." Prepare 1–2 short examples (e.g. `BankAccount`).
+</Callout>
+
+## The four pillars
+
+1. **Encapsulation** — Bundle data and behavior; hide internals.
+2. **Inheritance** — Reuse and specialise behavior from a parent class.
+3. **Polymorphism** — One interface, multiple behaviors.
+4. **Abstraction** — Hide complex implementation, expose only what's needed.
+
+## Minimal example
+
+```java
+public class BankAccount {
+    private double balance;
+
+    public BankAccount(double initial) { this.balance = initial; }
+
+    public void deposit(double amount) {
+        if (amount <= 0) throw new IllegalArgumentException();
+        this.balance += amount;
+    }
+
+    public double getBalance() { return this.balance; }
+}
+```
+
+`balance` is hidden (encapsulation); callers only interact via `deposit` and `getBalance`.
+
+## Why interviewers ask
+
+- Tests **design** thinking, not just code that runs.
+- Probes **trade-offs**: inheritance vs composition.
+- Foundation for **design patterns** and **SOLID**.

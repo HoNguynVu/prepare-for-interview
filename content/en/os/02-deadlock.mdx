@@ -1,0 +1,40 @@
+---
+title: "Deadlock"
+order: 2
+level: "intermediate"
+description: "Coffman conditions and how to prevent deadlocks."
+tags: ["os", "concurrency", "deadlock"]
+---
+
+## What is a deadlock?
+
+A situation where two or more threads/processes wait on each other forever and none can proceed.
+
+## Four Coffman conditions
+
+Deadlock requires **all four**:
+
+1. **Mutual exclusion**
+2. **Hold and wait**
+3. **No preemption**
+4. **Circular wait**
+
+Break **any** one → no deadlock.
+
+## Prevention techniques
+
+- **Lock ordering** — always acquire locks in the same global order.
+- **Try-lock with timeout** — `tryLock(timeout)` and back off.
+- **Lock-free structures** — CAS, atomic primitives.
+
+```java
+if (lockA.tryLock(1, TimeUnit.SECONDS)) {
+    try {
+        if (lockB.tryLock(1, TimeUnit.SECONDS)) { /* ... */ }
+    } finally { lockA.unlock(); }
+}
+```
+
+<Callout type="warning">
+**Livelock** ≠ deadlock: threads keep running but never make progress (like two people repeatedly dodging each other in a hallway).
+</Callout>

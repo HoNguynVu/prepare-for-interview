@@ -1,0 +1,41 @@
+{
+  "site": {
+    "name": "Prepare For Interview",
+    "tagline": "Master the fundamentals — one topic at a time."
+  },
+  "nav": {
+    "home": "Home",
+    "search": "Search",
+    "toggleTheme": "Toggle theme",
+    "toggleLocale": "Switch language"
+  },
+  "home": {
+    "heroTitle": "Crack your next interview, calmly.",
+    "heroSubtitle": "A focused, bilingual study hub covering the topics that come up in real software interviews.",
+    "browseTopics": "Browse topics",
+    "lessonsCount": "{count} lessons"
+  },
+  "topic": {
+    "lessons": "Lessons",
+    "noLessons": "No lessons yet. Content is being prepared.",
+    "groupBeginner": "Beginner",
+    "groupIntermediate": "Intermediate",
+    "groupAdvanced": "Advanced"
+  },
+  "lesson": {
+    "previous": "Previous",
+    "next": "Next",
+    "tableOfContents": "On this page",
+    "backToTopic": "Back to topic"
+  },
+  "search": {
+    "placeholder": "Search lessons...",
+    "noResults": "No results found.",
+    "hint": "Type to search across all topics"
+  },
+  "level": {
+    "beginner": "Beginner",
+    "intermediate": "Intermediate",
+    "advanced": "Advanced"
+  }
+}

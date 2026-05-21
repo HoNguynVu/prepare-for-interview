@@ -1,0 +1,47 @@
+---
+title: "Process và Thread"
+order: 1
+level: "beginner"
+description: "Phân biệt process và thread, khi nào dùng cái nào."
+tags: ["os", "process", "thread"]
+---
+
+## Process
+
+Một **process** là một chương trình đang chạy. Mỗi process có:
+
+- Không gian địa chỉ ảo **riêng**.
+- Tài nguyên riêng (file descriptor, heap, stack).
+- Tối thiểu **1 thread** chạy code.
+
+## Thread
+
+Một **thread** là đơn vị thực thi *nhẹ* bên trong process. Nhiều thread của **cùng** process **chia sẻ**:
+
+- Heap, code, dữ liệu global, file descriptor.
+
+Nhưng **mỗi thread có riêng** stack, register, program counter.
+
+## So sánh
+
+| Tiêu chí | Process | Thread |
+|---|---|---|
+| Tạo mới | Đắt | Rẻ |
+| Context switch | Đắt (đổi page table) | Rẻ |
+| Communication | IPC (pipe, socket, shared mem) | Biến chia sẻ |
+| Crash | Không ảnh hưởng process khác | Có thể giết cả process |
+
+## Khi nào dùng cái gì?
+
+- **CPU-bound** (tính toán nặng): trong Python dùng **process** (do GIL), trong Java/Go dùng **thread/goroutine**.
+- **I/O-bound** (đợi mạng/disk): thread hoặc async/await đều tốt.
+- **Cách ly fault**: process (Chrome mỗi tab 1 process).
+
+<Callout type="note">
+Trong Linux, từ kernel góc nhìn không có phân biệt cứng "process" vs "thread" — đều là *task*. Khác biệt chỉ là *cờ* khi `clone()`: thread chia sẻ address space, process thì không.
+</Callout>
+
+## Câu hỏi hay gặp
+
+- "Process tạo thread bằng syscall nào trên Linux?" → `clone()` với cờ `CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND`.
+- "Vì sao Python dùng multiprocessing thay vì threading cho CPU-bound?" → GIL chỉ cho 1 thread chạy bytecode tại một thời điểm.

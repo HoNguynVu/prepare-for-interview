@@ -1,0 +1,36 @@
+---
+title: "System Design Framework"
+order: 2
+level: "advanced"
+description: "A structured approach to system-design interviews."
+tags: ["system-design", "scalability"]
+---
+
+## Five-step framework
+
+1. **Clarify** — gather functional + non-functional requirements + scale.
+2. **Estimate** — back-of-envelope throughput, storage, bandwidth.
+3. **High-level design** — block diagram of the main components.
+4. **Deep dive** — drill into 1–2 components the interviewer points at.
+5. **Trade-offs** — articulate the trade-off of every decision.
+
+## Common building blocks
+
+```
+[Client] → [CDN/LB] → [API GW] → [Service] → [Cache] → [DB]
+                                     ↓
+                                 [Queue] → [Worker] → [Storage]
+```
+
+## Deep-dive checklist
+
+- Caching: write-through, write-back, cache-aside.
+- Sharding: hash by user_id? geographic? consistent hashing?
+- Replication: master-slave, multi-master.
+- Idempotency keys for retries.
+- Rate limiting (token bucket / leaky bucket).
+- Circuit breakers and bulkheads.
+
+<Callout type="tip">
+Interviewers grade **reasoning**, not the "right" answer. Think out loud, draw clearly, and update your design as hints arrive.
+</Callout>

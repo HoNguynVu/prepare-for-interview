@@ -1,0 +1,48 @@
+---
+title: "Inheritance (Kế thừa)"
+order: 3
+level: "intermediate"
+description: "Khi nào dùng kế thừa, và vì sao nhiều người khuyên ưu tiên composition."
+tags: ["oop", "inheritance"]
+---
+
+## Inheritance là gì?
+
+Một class B *kế thừa* class A có nghĩa B nhận được toàn bộ thuộc tính và phương thức của A, đồng thời có thể bổ sung hoặc **override** chúng.
+
+```java
+class Animal {
+    public void breathe() { /* ... */ }
+}
+
+class Dog extends Animal {
+    public void bark() { /* ... */ }
+}
+```
+
+## "Is-a" vs "Has-a"
+
+- **Is-a** (kế thừa): `Dog` *là* một `Animal`.
+- **Has-a** (composition): `Car` *có* một `Engine`.
+
+Quy tắc rút gọn: nếu bạn không thật sự thấy *"X là một Y"* hoàn toàn đúng, đừng kế thừa.
+
+## Vì sao "Favor composition over inheritance"?
+
+Kế thừa tạo ra liên kết **chặt** (tight coupling) giữa parent và child:
+
+- Thay đổi parent có thể phá vỡ tất cả con.
+- Child phụ thuộc vào *implementation* của parent, không chỉ interface.
+- Vấn đề "fragile base class" — sửa nhẹ ở parent gây regression toàn hệ thống.
+
+Composition cho phép tổ hợp hành vi linh hoạt qua interface và delegation.
+
+<Callout type="tip">
+Trong phỏng vấn: nếu được hỏi "khi nào dùng inheritance?", nói rõ bạn ưu tiên composition, và chỉ dùng inheritance khi quan hệ "is-a" **thật sự** rõ ràng và bạn muốn polymorphism.
+</Callout>
+
+## Multiple inheritance
+
+- Java/C# **không** cho phép multiple inheritance từ class (chỉ qua interface).
+- C++ cho phép, dẫn đến *diamond problem*.
+- Giải pháp hiện đại: **interfaces** + **mixin** + **trait**.

@@ -1,0 +1,55 @@
+---
+title: "Encapsulation (Đóng gói)"
+order: 2
+level: "beginner"
+description: "Đóng gói dữ liệu, access modifiers, và lý do dùng getter/setter."
+tags: ["oop", "encapsulation"]
+---
+
+## Khái niệm
+
+**Encapsulation** = đóng gói dữ liệu và hành vi xử lý dữ liệu đó vào *cùng một đơn vị* (class), đồng thời **giấu** trạng thái bên trong khỏi thế giới ngoài.
+
+Mục tiêu:
+
+- Bảo vệ tính nhất quán của dữ liệu (invariant).
+- Giảm coupling — code bên ngoài không phụ thuộc vào chi tiết cài đặt.
+- Dễ thay đổi cài đặt mà không phá vỡ chỗ khác.
+
+## Access modifiers
+
+| Modifier | Cùng class | Cùng package | Class con | Bên ngoài |
+|---|---|---|---|---|
+| `private` | ✅ | ❌ | ❌ | ❌ |
+| `protected` | ✅ | ✅ | ✅ | ❌ |
+| `public` | ✅ | ✅ | ✅ | ✅ |
+
+## Getter / Setter có cần thiết?
+
+Không phải lúc nào cũng cần. **Hãy chỉ phơi ra hành vi cần thiết**, không phơi nguyên trạng thái.
+
+```java
+// ❌ Phơi quá nhiều
+public class User {
+    public String email;
+}
+
+// ✅ Bảo vệ invariant
+public class User {
+    private String email;
+
+    public void changeEmail(String newEmail) {
+        if (!newEmail.contains("@")) throw new IllegalArgumentException();
+        this.email = newEmail;
+    }
+}
+```
+
+<Callout type="warning">
+Auto-generate setter cho mọi field là một anti-pattern. Nó biến class thành **anemic data structure** không khác gì struct.
+</Callout>
+
+## Câu hỏi hay gặp
+
+- *Vì sao không để field là public?* — Mất khả năng kiểm soát invariant, khó refactor.
+- *Encapsulation vs Abstraction khác nhau ở đâu?* — Encapsulation **giấu state**; abstraction **giấu implementation complexity**.

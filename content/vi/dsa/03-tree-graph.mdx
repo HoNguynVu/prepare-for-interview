@@ -1,0 +1,67 @@
+---
+title: "Cây và Đồ thị"
+order: 3
+level: "intermediate"
+description: "Duyệt cây, BFS/DFS, các bài toán graph thường gặp."
+tags: ["dsa", "tree", "graph"]
+---
+
+## Cây nhị phân — duyệt
+
+```python
+def inorder(root):
+    if not root: return
+    inorder(root.left)
+    print(root.val)
+    inorder(root.right)
+```
+
+Iterative dùng stack — phỏng vấn rất hay hỏi.
+
+## BST (Binary Search Tree)
+
+Tính chất: `left < node < right`.
+
+- Search/insert/delete: `O(h)`, với cây cân bằng → `O(log n)`.
+- Inorder traversal cho ra **dãy đã sắp xếp**.
+
+<Callout type="warning">
+BST không tự cân bằng. Trường hợp xấu (insert sorted data) → suy biến về linked list, `O(n)`. Phỏng vấn senior hỏi → **AVL** hoặc **Red-Black tree** giữ cân bằng.
+</Callout>
+
+## BFS vs DFS
+
+| | BFS | DFS |
+|---|---|---|
+| Cấu trúc | Queue | Stack / đệ quy |
+| Ứng dụng | Shortest path (unweighted), level order | Tìm chu trình, topological sort, connected component |
+| Memory | Có thể tốn (queue rộng) | Tốn theo độ sâu |
+
+```python
+from collections import deque
+
+def bfs(start, graph):
+    visited = {start}
+    q = deque([start])
+    while q:
+        node = q.popleft()
+        for nei in graph[node]:
+            if nei not in visited:
+                visited.add(nei)
+                q.append(nei)
+```
+
+## Các thuật toán đồ thị quan trọng
+
+- **Dijkstra** — shortest path, trọng số dương. `O((V+E) log V)`.
+- **Bellman-Ford** — cho phép cạnh âm. `O(VE)`.
+- **Topological sort** — DAG, dùng cho task scheduling.
+- **Union-Find (DSU)** — kết nối components, Kruskal MST.
+
+## Câu hỏi đinh trong phỏng vấn
+
+- Number of Islands (BFS/DFS hoặc DSU)
+- Course Schedule (topological sort + cycle detection)
+- Word Ladder (BFS)
+- Clone Graph
+- LCA (Lowest Common Ancestor)

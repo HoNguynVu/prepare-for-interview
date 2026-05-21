@@ -1,0 +1,36 @@
+---
+title: "TCP vs UDP"
+order: 2
+level: "beginner"
+description: "Distinguishing the two transport protocols and when to use each."
+tags: ["network", "tcp", "udp"]
+---
+
+## Quick comparison
+
+| | TCP | UDP |
+|---|---|---|
+| Connection | Yes (handshake) | No |
+| Reliability | ✅ Ordered, no loss | ❌ May drop |
+| Speed | Slower | Faster |
+| Header size | 20 bytes | 8 bytes |
+| Used by | HTTP, SSH, SMTP | DNS, VoIP, games |
+
+## 3-way handshake
+
+```
+Client                Server
+  | ---- SYN ---->     |
+  | <-- SYN-ACK --     |
+  | ---- ACK ---->     |
+```
+
+## When to use UDP
+
+- **Streaming**: a few lost frames are tolerable, latency matters more.
+- **DNS**: small payload, retry is cheap.
+- **Online games**: real-time over reliability.
+
+<Callout type="note">
+HTTP/3 runs over **QUIC**, which uses UDP but adds reliability on top — a great follow-up topic.
+</Callout>

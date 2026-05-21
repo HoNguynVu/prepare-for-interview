@@ -1,0 +1,49 @@
+---
+title: "Quản lý bộ nhớ"
+order: 3
+level: "advanced"
+description: "Virtual memory, paging, segmentation, và TLB."
+tags: ["os", "memory", "paging"]
+---
+
+## Virtual memory
+
+Mỗi process thấy một **không gian địa chỉ ảo** riêng (thường 4GB trên 32-bit, 256TB trên 64-bit). OS + MMU dịch sang **địa chỉ vật lý**.
+
+Lợi ích:
+
+- **Cách ly** giữa các process.
+- Cho dùng nhiều RAM hơn vật lý thực tế (paging ra disk).
+- Lazy allocation, copy-on-write, mmap.
+
+## Paging
+
+Bộ nhớ ảo chia thành các **trang** (page, thường 4KB). RAM chia thành **frame** cùng kích thước.
+
+Page table ánh xạ page → frame. Khi truy cập:
+
+1. CPU đưa địa chỉ ảo cho **MMU**.
+2. MMU tra **TLB** (cache page table) — nếu hit thì nhanh.
+3. Miss → tra page table trong RAM (đắt hơn).
+4. Page không trong RAM → **page fault** → OS load từ disk.
+
+## Page fault loại nào?
+
+- **Minor**: page có trong RAM nhưng chưa map → chỉ update page table.
+- **Major**: phải đọc từ disk (chậm hơn nhiều lần).
+- **Invalid**: truy cập vùng không hợp lệ → segfault.
+
+## Các kỹ thuật quan trọng
+
+- **Copy-on-write**: `fork()` chia sẻ page; chỉ copy khi 1 bên ghi.
+- **Demand paging**: chỉ load page khi cần.
+- **Swap**: đẩy page ít dùng ra disk.
+- **mmap**: ánh xạ file vào bộ nhớ, OS load on-demand.
+
+<Callout type="tip">
+Câu hỏi hay: "Vì sao `malloc(1GB)` thành công ngay cả khi máy chỉ có 512MB RAM?" → Đó là *virtual allocation*; OS chỉ thực sự cấp page khi bạn ghi vào (demand paging).
+</Callout>
+
+## TLB shootdown
+
+Khi 1 CPU đổi page table, các CPU khác có TLB cũ → cần **invalidate**. Đây là một nguồn latency lớn trong hệ thống multi-core.

@@ -1,0 +1,37 @@
+---
+title: "Arrays and Strings"
+order: 2
+level: "beginner"
+description: "Patterns: two-pointer, sliding window, prefix sum."
+tags: ["dsa", "array"]
+---
+
+## Two pointers
+
+```python
+def two_sum_sorted(arr, target):
+    l, r = 0, len(arr) - 1
+    while l < r:
+        s = arr[l] + arr[r]
+        if s == target: return (l, r)
+        if s < target: l += 1
+        else: r -= 1
+```
+
+`O(n)` time, `O(1)` space — beats the brute force `O(n²)`.
+
+## Sliding window
+
+Use for contiguous subarrays/substrings with constraints.
+
+## Prefix sum
+
+```python
+prefix = [0]
+for x in arr: prefix.append(prefix[-1] + x)
+# sum arr[l..r] = prefix[r+1] - prefix[l]
+```
+
+<Callout type="tip">
+Always clarify: ASCII or Unicode? Case-sensitive? May we mutate the input? — These questions impress interviewers.
+</Callout>

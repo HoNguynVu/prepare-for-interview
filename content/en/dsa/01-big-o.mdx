@@ -1,0 +1,37 @@
+---
+title: "Big-O Complexity"
+order: 1
+level: "beginner"
+description: "Analyse time and space complexity — the first move on every DSA question."
+tags: ["dsa", "complexity"]
+---
+
+## What Big-O measures
+
+Big-O describes the **growth rate** as `n` grows — not actual wall-clock time.
+
+```
+O(1) < O(log n) < O(n) < O(n log n) < O(n²) < O(2ⁿ) < O(n!)
+```
+
+## Cheat sheet
+
+| Big-O | Example |
+|---|---|
+| O(1) | Array index, hash lookup |
+| O(log n) | Binary search, balanced BST |
+| O(n) | Linear scan |
+| O(n log n) | Merge sort, quick sort (avg) |
+| O(n²) | Nested loops |
+| O(2ⁿ) | Subsets, naive recursive Fibonacci |
+
+## Quick analysis tips
+
+- One `for` over `n` → `O(n)`.
+- Nested loops → multiply.
+- Halving each step → `log n`.
+- For recursion: draw the call tree, sum work per node.
+
+<Callout type="tip">
+Don't chase `O(1)` when `n` is always small. `O(n²)` with `n=100` may still beat `O(n log n)` with a big constant.
+</Callout>

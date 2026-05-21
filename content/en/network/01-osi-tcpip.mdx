@@ -1,0 +1,35 @@
+---
+title: "OSI and TCP/IP models"
+order: 1
+level: "beginner"
+description: "The 7-layer OSI model and the 4-layer TCP/IP model side by side."
+tags: ["network", "osi", "tcpip"]
+---
+
+## OSI — 7 layers
+
+| # | Layer | Role | Example |
+|---|---|---|---|
+| 7 | Application | App-level protocols | HTTP, DNS, FTP |
+| 6 | Presentation | Encoding / encryption | TLS, JPEG |
+| 5 | Session | Session control | NetBIOS |
+| 4 | Transport | Reliable delivery | TCP, UDP |
+| 3 | Network | Routing | IP, ICMP |
+| 2 | Data Link | Frame on link | Ethernet, MAC |
+| 1 | Physical | Bits on wire | Cables, radio |
+
+## TCP/IP — 4 layers (real-world)
+
+1. **Link** (≈ OSI 1–2)
+2. **Internet** (≈ OSI 3)
+3. **Transport** (≈ OSI 4)
+4. **Application** (≈ OSI 5–7)
+
+<Callout type="tip">
+Mnemonic top-down: **A**ll **P**eople **S**eem **T**o **N**eed **D**ata **P**rocessing.
+</Callout>
+
+## Typical interview questions
+
+- "Through how many layers does a packet pass from A to B?" — Down through all 7 on A, up through all 7 on B.
+- "Where does HTTPS live?" — HTTP at Application + TLS at Presentation.

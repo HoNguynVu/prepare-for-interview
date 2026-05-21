@@ -1,0 +1,60 @@
+---
+title: "OAuth 2.0 và OpenID Connect"
+order: 2
+level: "intermediate"
+description: "Phân biệt authentication vs authorization, các flow phổ biến."
+tags: ["auth", "oauth", "oidc"]
+---
+
+## Authentication vs Authorization
+
+- **Authentication (AuthN)**: bạn là *ai*? → đăng nhập.
+- **Authorization (AuthZ)**: bạn được làm *gì*? → kiểm tra quyền.
+
+OAuth 2.0 vốn là cho **authorization** (cấp access đến tài nguyên). OpenID Connect (OIDC) thêm lớp **authentication** lên trên.
+
+## OAuth 2.0 — bốn vai
+
+| Vai | Ví dụ |
+|---|---|
+| Resource Owner | User cuối |
+| Client | App của bạn |
+| Authorization Server | Google, GitHub |
+| Resource Server | Google Drive API |
+
+## Authorization Code Flow (chuẩn, có PKCE)
+
+```
+1. Client redirect user → Auth Server với redirect_uri + code_challenge.
+2. User login & consent ở Auth Server.
+3. Auth Server redirect về client với code.
+4. Client gửi code + code_verifier → Auth Server đổi lấy access token.
+5. Client gọi Resource Server với access token.
+```
+
+PKCE bảo vệ khỏi *intercept* code trên thiết bị di động.
+
+## Các flow khác
+
+- **Implicit** — token trả thẳng cho browser. **Deprecated**, không dùng.
+- **Client Credentials** — service-to-service, không có user.
+- **Resource Owner Password** — client xin password trực tiếp. **Tránh dùng**.
+- **Device Code** — TV, smart device không có browser.
+
+## OpenID Connect (OIDC)
+
+OIDC = OAuth 2.0 + **ID Token** (JWT chứa user info).
+
+- `access_token` → gọi API.
+- `id_token` → biết user là ai (authentication).
+- `userinfo` endpoint → xin thêm claim.
+
+<Callout type="tip">
+Câu hỏi cực hay gặp: "Khi nào dùng OAuth, khi nào dùng OIDC?" → OAuth nếu chỉ cần access tài nguyên; OIDC nếu cần biết *user là ai* (login bằng Google, Facebook).
+</Callout>
+
+## Bẫy thường gặp
+
+- Không validate `state` → CSRF.
+- Không validate `aud` của ID token → token của app khác.
+- Lưu access token sai chỗ (localStorage) → XSS.

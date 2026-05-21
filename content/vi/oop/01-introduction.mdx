@@ -1,0 +1,59 @@
+---
+title: "Giới thiệu về OOP"
+order: 1
+level: "beginner"
+description: "Tổng quan về lập trình hướng đối tượng và vì sao nó quan trọng trong phỏng vấn."
+tags: ["oop", "fundamentals"]
+---
+
+## OOP là gì?
+
+**Lập trình hướng đối tượng (Object-Oriented Programming — OOP)** là một paradigm tổ chức code xung quanh các *đối tượng* (object) thay vì các hàm và logic. Mỗi đối tượng gói chung **dữ liệu** (thuộc tính) và **hành vi** (phương thức) liên quan.
+
+<Callout type="tip">
+Một câu hỏi cực kỳ phổ biến: "Bạn hãy giải thích OOP qua một ví dụ thực tế." Hãy chuẩn bị 1-2 ví dụ ngắn gọn (ví dụ: lớp `BankAccount`).
+</Callout>
+
+## Bốn trụ cột
+
+OOP có **4 trụ cột** mà bạn bắt buộc phải biết:
+
+1. **Encapsulation** — Đóng gói dữ liệu và hành vi vào một đơn vị, ẩn chi tiết bên trong.
+2. **Inheritance** — Kế thừa hành vi từ lớp cha.
+3. **Polymorphism** — Một interface, nhiều hành vi.
+4. **Abstraction** — Ẩn đi cài đặt phức tạp, chỉ phơi ra phần cần dùng.
+
+## Ví dụ tối giản
+
+```java
+public class BankAccount {
+    private double balance;
+
+    public BankAccount(double initial) {
+        this.balance = initial;
+    }
+
+    public void deposit(double amount) {
+        if (amount <= 0) throw new IllegalArgumentException();
+        this.balance += amount;
+    }
+
+    public double getBalance() {
+        return this.balance;
+    }
+}
+```
+
+Ở đây `balance` được ẩn (encapsulation), người dùng chỉ tương tác qua `deposit` và `getBalance`.
+
+## Vì sao interviewer hay hỏi?
+
+- Đánh giá khả năng **thiết kế** chứ không chỉ viết code chạy.
+- Kiểm tra hiểu biết **trade-off**: khi nào dùng kế thừa, khi nào dùng composition.
+- Là nền tảng cho **design patterns** và **SOLID**.
+
+## Tóm tắt
+
+- OOP gom dữ liệu + hành vi vào object.
+- Bốn trụ cột: encapsulation, inheritance, polymorphism, abstraction.
+- Phỏng vấn thường yêu cầu giải thích kèm ví dụ thực tế.

@@ -1,0 +1,47 @@
+---
+title: "HTTP và HTTPS"
+order: 3
+level: "intermediate"
+description: "Cấu trúc request/response, status code, và TLS giúp HTTPS bảo mật thế nào."
+tags: ["network", "http", "https", "tls"]
+---
+
+## HTTP là gì?
+
+Giao thức **stateless** ở tầng Application. Client gửi *request*, server trả về *response*.
+
+```http
+GET /api/users/42 HTTP/1.1
+Host: example.com
+Accept: application/json
+Authorization: Bearer eyJhbGciOi...
+```
+
+## Status code thông dụng
+
+| Code | Ý nghĩa | Ví dụ |
+|---|---|---|
+| 2xx | Thành công | 200 OK, 201 Created, 204 No Content |
+| 3xx | Chuyển hướng | 301 Permanent, 302 Found, 304 Not Modified |
+| 4xx | Lỗi client | 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 429 Too Many |
+| 5xx | Lỗi server | 500 Internal, 502 Bad Gateway, 503 Unavailable |
+
+## HTTP/1.1 → HTTP/2 → HTTP/3
+
+- **HTTP/1.1**: 1 request / connection (keep-alive), head-of-line blocking.
+- **HTTP/2**: Multiplexing nhiều stream trên 1 TCP, header compression (HPACK).
+- **HTTP/3**: Chạy trên **QUIC (UDP)**, giải quyết HoL ở tầng transport luôn.
+
+## HTTPS = HTTP + TLS
+
+Quá trình bắt tay TLS (đơn giản hóa):
+
+1. Client gửi `ClientHello` (cipher suites, random).
+2. Server gửi `ServerHello` + chứng chỉ.
+3. Client verify chứng chỉ qua **CA**.
+4. Cả hai trao đổi khóa (ECDHE) → tạo **session key**.
+5. Mã hóa toàn bộ trao đổi sau đó bằng session key (đối xứng — nhanh).
+
+<Callout type="tip">
+Câu hỏi đinh: "HTTPS bảo vệ những gì?" → Confidentiality (mã hoá), Integrity (MAC/AEAD), Authentication (chứng chỉ server). **Không** chống được phishing hay malware client.
+</Callout>

@@ -1,0 +1,55 @@
+---
+title: "Băm mật khẩu đúng cách"
+order: 3
+level: "intermediate"
+description: "Vì sao MD5/SHA-1 sai, và bcrypt/argon2 đúng."
+tags: ["auth", "hashing", "security"]
+---
+
+## Vì sao không lưu mật khẩu raw?
+
+Nếu DB lộ → mọi user *trên mọi site dùng cùng password* đều bị lộ.
+
+→ Phải **băm** (hash) trước khi lưu.
+
+## Vì sao MD5, SHA-1, SHA-256 sai?
+
+- **Quá nhanh.** Attacker brute-force hàng tỷ hash/giây trên GPU.
+- Không có **salt** sinh sẵn → vulnerable rainbow table.
+- MD5/SHA-1 có collision → đã *broken*.
+
+## Đúng: bcrypt, scrypt, argon2
+
+Đặc điểm chung:
+
+- **Chậm có chủ đích** (work factor có thể tune).
+- Tự sinh **salt** ngẫu nhiên, lưu chung với hash.
+- Resistance với GPU/ASIC (scrypt/argon2 còn dùng nhiều memory).
+
+```python
+import bcrypt
+hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=12))
+# verify
+bcrypt.checkpw(password.encode(), hashed)
+```
+
+`rounds=12` → ~250ms để hash. Quá nhanh = không đủ chậm cho attacker; quá chậm = user khó chịu.
+
+## So sánh
+
+| Algorithm | Năm | Mạnh chống |
+|---|---|---|
+| bcrypt | 1999 | CPU brute-force (chuẩn cũ nhưng vẫn ổn) |
+| scrypt | 2009 | Memory-hard, chống ASIC |
+| **argon2id** | 2015 | Khuyến nghị hiện nay (PHC winner) |
+
+<Callout type="warning">
+**Pepper** ≠ salt. Pepper là secret chung lưu ngoài DB (ENV/HSM). Lợi: nếu DB lộ nhưng pepper không lộ → vẫn an toàn. Hạn chế: khó rotate.
+</Callout>
+
+## Best practice
+
+- Argon2id với memory ≥ 19MB, iterations ≥ 2, parallelism = 1.
+- Hoặc bcrypt cost = 12 (2025 trở đi nên 13).
+- Rate limit + lockout sau N attempts.
+- Theo dõi *credential stuffing* qua HaveIBeenPwned.

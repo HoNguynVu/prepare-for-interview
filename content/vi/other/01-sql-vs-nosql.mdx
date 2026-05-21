@@ -1,0 +1,58 @@
+---
+title: "SQL vs NoSQL"
+order: 1
+level: "beginner"
+description: "Khi nào chọn relational, khi nào chọn document/key-value/graph."
+tags: ["database", "sql", "nosql"]
+---
+
+## SQL (relational)
+
+- Cấu trúc bảng cứng, schema rõ ràng.
+- **ACID** mạnh.
+- Quan hệ qua **JOIN**.
+- Ví dụ: PostgreSQL, MySQL, SQL Server.
+
+✅ Truy vấn phức tạp, ràng buộc nghiêm ngặt, transaction tài chính.
+❌ Schema cứng → khó iterate; scale ngang khó.
+
+## NoSQL — 4 họ
+
+| Họ | Ví dụ | Use case |
+|---|---|---|
+| Document | MongoDB | Schema linh hoạt, content |
+| Key-Value | Redis | Cache, session |
+| Wide-column | Cassandra | Time-series, big data |
+| Graph | Neo4j | Mạng xã hội, recommendation |
+
+## CAP theorem
+
+Một hệ phân tán **không thể** đảm bảo cả 3:
+
+- **C**onsistency
+- **A**vailability
+- **P**artition tolerance
+
+Trong thực tế, partition luôn có thể xảy ra → phải chọn **CP** hoặc **AP**.
+
+- **CP**: MongoDB (cũ), HBase — ưu tiên consistency.
+- **AP**: Cassandra, DynamoDB — ưu tiên availability.
+
+<Callout type="note">
+Postgres hiện đại với replica có thể là CP hoặc AP tùy config. Đừng coi "SQL = CP" là tuyệt đối.
+</Callout>
+
+## Khi nào chọn NoSQL?
+
+- Schema thay đổi liên tục (early-stage product).
+- Cần scale ngang đến TB-PB.
+- Truy vấn đơn giản, key-based.
+- Không cần JOIN phức tạp.
+
+## Khi nào ở lại SQL?
+
+- Transaction đa bảng cần ACID.
+- Quan hệ nhiều-nhiều phức tạp.
+- Đội ngũ quen, ecosystem mạnh.
+
+**Sự thật**: 90% project bắt đầu nên dùng PostgreSQL. Chỉ chuyển NoSQL khi có lý do **đo được**.

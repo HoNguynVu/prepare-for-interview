@@ -1,0 +1,36 @@
+---
+title: "SOLID Principles"
+order: 2
+level: "advanced"
+description: "Five design principles that make code maintainable and extensible."
+tags: ["oop", "solid"]
+---
+
+## SOLID
+
+Five principles by **Robert C. Martin**:
+
+- **S**ingle Responsibility — one reason to change.
+- **O**pen/Closed — open to extension, closed to modification.
+- **L**iskov Substitution — subtypes must be substitutable for their base types.
+- **I**nterface Segregation — many small, focused interfaces beat one fat one.
+- **D**ependency Inversion — depend on abstractions, not concretions.
+
+<Callout type="tip">
+In interviews, don't just list definitions. Pick **one** principle and walk through a real example from code you've written.
+</Callout>
+
+## Dependency Inversion in practice
+
+```java
+// ❌ Tightly coupled
+class OrderService { MySQLDb db = new MySQLDb(); }
+
+// ✅ Depends on abstraction
+class OrderService {
+    private Database db;
+    OrderService(Database db) { this.db = db; }
+}
+```
+
+Now `OrderService` is testable (inject a fake) and storage-agnostic.

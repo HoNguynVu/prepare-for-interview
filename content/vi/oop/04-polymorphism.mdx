@@ -1,0 +1,62 @@
+---
+title: "Polymorphism (Đa hình)"
+order: 4
+level: "intermediate"
+description: "Compile-time vs runtime polymorphism, overloading vs overriding."
+tags: ["oop", "polymorphism"]
+---
+
+## Hai loại polymorphism
+
+| Loại | Còn gọi là | Khi xảy ra |
+|---|---|---|
+| **Compile-time** | Static / Overloading | Lúc biên dịch |
+| **Runtime** | Dynamic / Overriding | Lúc chạy |
+
+## Overloading (cùng tên, khác signature)
+
+```java
+class Printer {
+    void print(int n) { ... }
+    void print(String s) { ... }
+    void print(int n, String s) { ... }
+}
+```
+
+Compiler chọn method dựa trên **kiểu tham số** lúc biên dịch.
+
+## Overriding (con override cha)
+
+```java
+class Animal { String sound() { return "..."; } }
+class Dog extends Animal { @Override String sound() { return "woof"; } }
+
+Animal a = new Dog();
+a.sound(); // "woof" — quyết định lúc runtime
+```
+
+JVM dùng **virtual method table** để dispatch đúng phương thức của subclass.
+
+## Vì sao polymorphism quan trọng?
+
+- Cho phép **viết code chống lại interface** thay vì implementation cụ thể.
+- Là nền tảng của **dependency inversion** (chữ D trong SOLID).
+- Giúp mã dễ mở rộng (open/closed principle).
+
+```java
+interface PaymentGateway {
+    boolean charge(double amount);
+}
+
+class OrderService {
+    private PaymentGateway gateway;
+    OrderService(PaymentGateway g) { this.gateway = g; }
+    void checkout(double amt) { gateway.charge(amt); }
+}
+```
+
+Thêm gateway mới (Stripe, PayPal, MoMo) không cần sửa `OrderService`.
+
+<Callout type="note">
+Trong interview, nếu bạn nói "polymorphism là 1 interface nhiều behavior", hãy follow-up bằng một ví dụ cụ thể như trên — sẽ ăn điểm hơn nhiều.
+</Callout>

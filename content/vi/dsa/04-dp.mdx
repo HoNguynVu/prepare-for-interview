@@ -1,0 +1,65 @@
+---
+title: "Quy hoạch động (DP)"
+order: 4
+level: "advanced"
+description: "Tư duy DP: định nghĩa state, viết công thức truy hồi, tối ưu không gian."
+tags: ["dsa", "dp"]
+---
+
+## DP là gì?
+
+**Dynamic Programming** = chia bài toán thành bài con **chồng lấp**, lưu kết quả để không tính lại.
+
+Hai cách:
+
+- **Top-down** (memoization): đệ quy + cache.
+- **Bottom-up** (tabulation): for loop điền bảng.
+
+## Khung 5 bước
+
+1. **State**: biến nào đại diện cho bài toán con? (Ví dụ: `dp[i]` = best up to index `i`.)
+2. **Base case**: `dp[0]` bằng gì?
+3. **Transition**: `dp[i]` tính từ `dp[i-1]`, `dp[i-2]`... thế nào?
+4. **Order**: tính theo thứ tự nào để khi cần `dp[j]` đã có?
+5. **Answer**: kết quả là `dp[n]` hay `max(dp)`?
+
+## Ví dụ: Fibonacci
+
+```python
+def fib(n):
+    dp = [0, 1] + [0]*(n-1)
+    for i in range(2, n+1):
+        dp[i] = dp[i-1] + dp[i-2]
+    return dp[n]
+```
+
+Tối ưu O(1) space: chỉ cần 2 biến.
+
+## Phân loại DP thường gặp
+
+| Loại | Ví dụ |
+|---|---|
+| 1D DP | Climbing Stairs, House Robber |
+| 2D DP | Edit Distance, LCS, Knapsack |
+| Khoảng (interval) | Matrix Chain, Burst Balloons |
+| Bit DP | TSP, Subsets |
+| DP trên cây | Diameter of tree |
+
+## LCS (Longest Common Subsequence)
+
+```python
+def lcs(a, b):
+    m, n = len(a), len(b)
+    dp = [[0]*(n+1) for _ in range(m+1)]
+    for i in range(m):
+        for j in range(n):
+            if a[i] == b[j]:
+                dp[i+1][j+1] = dp[i][j] + 1
+            else:
+                dp[i+1][j+1] = max(dp[i+1][j], dp[i][j+1])
+    return dp[m][n]
+```
+
+<Callout type="tip">
+Nhận biết DP: khi bạn thấy có **lựa chọn** (take/skip), kết quả **không phụ thuộc thứ tự lựa chọn cụ thể**, và có **bài toán con lặp lại** — thử DP.
+</Callout>

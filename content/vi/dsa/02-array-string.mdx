@@ -1,0 +1,62 @@
+---
+title: "Mảng và Chuỗi"
+order: 2
+level: "beginner"
+description: "Các pattern hay gặp: two-pointer, sliding window, prefix sum."
+tags: ["dsa", "array", "string"]
+---
+
+## Two pointers
+
+Dùng khi: tìm cặp, đảo, partition.
+
+```python
+def two_sum_sorted(arr, target):
+    l, r = 0, len(arr) - 1
+    while l < r:
+        s = arr[l] + arr[r]
+        if s == target: return (l, r)
+        if s < target: l += 1
+        else: r -= 1
+    return None
+```
+
+`O(n)` time, `O(1)` space — đẹp hơn brute force `O(n²)`.
+
+## Sliding window
+
+Dùng khi: subarray/substring có ràng buộc liên tục.
+
+```python
+# Longest substring không lặp ký tự
+def longest_unique(s):
+    seen, l, best = {}, 0, 0
+    for r, ch in enumerate(s):
+        if ch in seen and seen[ch] >= l:
+            l = seen[ch] + 1
+        seen[ch] = r
+        best = max(best, r - l + 1)
+    return best
+```
+
+## Prefix sum
+
+Tính tổng `[l..r]` trong O(1) sau khi tiền xử lý O(n).
+
+```python
+prefix = [0]
+for x in arr: prefix.append(prefix[-1] + x)
+# sum arr[l..r] = prefix[r+1] - prefix[l]
+```
+
+## Các câu kinh điển
+
+- Two Sum / 3Sum
+- Maximum Subarray (Kadane)
+- Trapping Rain Water
+- Longest Palindromic Substring
+- Minimum Window Substring
+
+<Callout type="tip">
+Khi gặp string, hỏi: ASCII hay Unicode? Có phân biệt hoa thường? Có cho phép sửa input? — Những câu hỏi clarification này gây ấn tượng tốt.
+</Callout>

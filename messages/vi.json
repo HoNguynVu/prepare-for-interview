@@ -1,0 +1,41 @@
+{
+  "site": {
+    "name": "Prepare For Interview",
+    "tagline": "Nắm vững kiến thức nền — từng chủ đề một."
+  },
+  "nav": {
+    "home": "Trang chủ",
+    "search": "Tìm kiếm",
+    "toggleTheme": "Đổi giao diện",
+    "toggleLocale": "Đổi ngôn ngữ"
+  },
+  "home": {
+    "heroTitle": "Tự tin chinh phục buổi phỏng vấn tiếp theo.",
+    "heroSubtitle": "Trung tâm ôn tập song ngữ, gọn ghẽ, bao phủ những chủ đề thường gặp khi phỏng vấn lập trình.",
+    "browseTopics": "Khám phá chủ đề",
+    "lessonsCount": "{count} bài"
+  },
+  "topic": {
+    "lessons": "Danh sách bài",
+    "noLessons": "Chưa có bài học. Nội dung đang được chuẩn bị.",
+    "groupBeginner": "Cơ bản",
+    "groupIntermediate": "Trung cấp",
+    "groupAdvanced": "Nâng cao"
+  },
+  "lesson": {
+    "previous": "Bài trước",
+    "next": "Bài sau",
+    "tableOfContents": "Mục lục",
+    "backToTopic": "Quay lại chủ đề"
+  },
+  "search": {
+    "placeholder": "Tìm bài học...",
+    "noResults": "Không tìm thấy kết quả.",
+    "hint": "Gõ để tìm trong tất cả chủ đề"
+  },
+  "level": {
+    "beginner": "Cơ bản",
+    "intermediate": "Trung cấp",
+    "advanced": "Nâng cao"
+  }
+}

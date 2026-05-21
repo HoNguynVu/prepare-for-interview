@@ -1,0 +1,37 @@
+---
+title: "OAuth 2.0 and OpenID Connect"
+order: 2
+level: "intermediate"
+description: "AuthN vs AuthZ, and the common OAuth flows."
+tags: ["auth", "oauth", "oidc"]
+---
+
+## AuthN vs AuthZ
+
+- **Authentication**: who are you? → login.
+- **Authorization**: what can you do? → permission check.
+
+OAuth 2.0 is fundamentally about **authorization**. **OpenID Connect** (OIDC) is an authentication layer built on top.
+
+## Four roles
+
+| Role | Example |
+|---|---|
+| Resource Owner | End user |
+| Client | Your app |
+| Authorization Server | Google, GitHub |
+| Resource Server | Google Drive API |
+
+## Authorization Code Flow with PKCE
+
+1. Client redirects user to auth server with `redirect_uri` + `code_challenge`.
+2. User logs in & consents.
+3. Auth server redirects back with `code`.
+4. Client exchanges `code` + `code_verifier` for an access token.
+5. Client uses the token against the resource server.
+
+PKCE prevents the code from being intercepted on mobile devices.
+
+<Callout type="tip">
+"When OAuth vs OIDC?" — Use OAuth if you only need access to APIs. Use OIDC if you also need to *identify* the user (e.g. "Sign in with Google").
+</Callout>

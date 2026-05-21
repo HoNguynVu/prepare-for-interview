@@ -1,0 +1,29 @@
+---
+title: "SQL vs NoSQL"
+order: 1
+level: "beginner"
+description: "When to pick relational vs document, key-value, wide-column, or graph."
+tags: ["database", "sql", "nosql"]
+---
+
+## SQL (relational)
+
+- Strict schema, ACID, joins, complex queries.
+- Postgres, MySQL, SQL Server.
+
+## NoSQL families
+
+| Family | Example | Use case |
+|---|---|---|
+| Document | MongoDB | Flexible schema, content |
+| Key-Value | Redis | Cache, session |
+| Wide-column | Cassandra | Time-series, big data |
+| Graph | Neo4j | Social, recommendations |
+
+## CAP theorem
+
+A distributed system can't simultaneously guarantee **C**onsistency, **A**vailability and **P**artition tolerance. Partitions will happen, so you pick CP or AP.
+
+<Callout type="note">
+Practical advice: 90% of new projects should start with PostgreSQL. Switch to NoSQL only when you have a measurable reason.
+</Callout>

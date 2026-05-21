@@ -1,0 +1,68 @@
+---
+title: "Nguyên lý SOLID"
+order: 5
+level: "advanced"
+description: "5 nguyên lý thiết kế giúp code dễ bảo trì, dễ mở rộng — câu hỏi đinh trong phỏng vấn senior."
+tags: ["oop", "solid", "design"]
+---
+
+## SOLID là gì?
+
+Tập 5 nguyên lý do **Robert C. Martin** (Uncle Bob) đề xuất:
+
+- **S**ingle Responsibility
+- **O**pen/Closed
+- **L**iskov Substitution
+- **I**nterface Segregation
+- **D**ependency Inversion
+
+## S — Single Responsibility Principle (SRP)
+
+Một class **chỉ nên có một lý do để thay đổi**.
+
+❌ `User` vừa load DB, vừa render HTML, vừa gửi email → thay đổi DB cũng phải sửa class này.
+✅ Tách thành `UserRepository`, `UserView`, `UserEmailer`.
+
+## O — Open/Closed Principle (OCP)
+
+Class **mở để mở rộng, đóng để sửa đổi**. Thêm tính năng bằng cách thêm code, không sửa code cũ.
+
+→ Dùng **interface + dependency injection** + **polymorphism**.
+
+## L — Liskov Substitution Principle (LSP)
+
+Class con **phải thay thế được** class cha mà không phá vỡ hành vi.
+
+❌ Cổ điển: `Square extends Rectangle` — khi `setWidth` cũng đổi `height`, code dùng `Rectangle` sẽ fail.
+
+## I — Interface Segregation Principle (ISP)
+
+Đừng ép client phụ thuộc vào method nó không dùng. Chia interface lớn thành nhiều interface nhỏ.
+
+```java
+// ❌ Fat interface
+interface Worker { void work(); void eat(); void sleep(); }
+
+// ✅ Nhỏ và focused
+interface Workable { void work(); }
+interface Eatable { void eat(); }
+```
+
+## D — Dependency Inversion Principle (DIP)
+
+Module cấp cao **không** phụ thuộc vào module cấp thấp; cả hai phụ thuộc vào **abstraction**.
+
+```java
+// ❌ OrderService phụ thuộc trực tiếp MySQL
+class OrderService { MySQLDb db = new MySQLDb(); }
+
+// ✅ Phụ thuộc abstraction
+class OrderService {
+    private Database db;
+    OrderService(Database db) { this.db = db; }
+}
+```
+
+<Callout type="tip">
+Mẹo nhớ: **S**ingle, **O**pen, **L**iskov, **I**nterface, **D**ependency. Trong interview, hãy lấy *một* nguyên lý và giải thích bằng ví dụ trong code thật bạn từng viết — ấn tượng hơn list 5 định nghĩa.
+</Callout>

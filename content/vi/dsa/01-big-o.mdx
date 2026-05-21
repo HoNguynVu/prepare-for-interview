@@ -1,0 +1,51 @@
+---
+title: "Độ phức tạp Big-O"
+order: 1
+level: "beginner"
+description: "Phân tích độ phức tạp thời gian và không gian — bước đầu của mọi câu hỏi DSA."
+tags: ["dsa", "complexity", "big-o"]
+---
+
+## Big-O đo cái gì?
+
+Big-O mô tả **tốc độ tăng** của thời gian/không gian khi `n` tăng — *không* đo thời gian thật.
+
+```
+O(1) < O(log n) < O(n) < O(n log n) < O(n²) < O(2ⁿ) < O(n!)
+```
+
+## Bảng cheatsheet
+
+| Big-O | Ví dụ |
+|---|---|
+| O(1) | Truy cập mảng `arr[i]`, hash lookup |
+| O(log n) | Binary search, cây cân bằng |
+| O(n) | Duyệt mảng |
+| O(n log n) | Merge sort, quick sort (avg) |
+| O(n²) | Bubble sort, nested loop |
+| O(2ⁿ) | Subset, Fibonacci đệ quy chưa memo |
+
+## Mẹo phân tích nhanh
+
+- 1 vòng for chạy `n` lần → `O(n)`.
+- Nested for → nhân vào.
+- Chia đôi mỗi bước → `log n`.
+- Đệ quy: vẽ cây gọi, đếm node × work mỗi node.
+
+## Worst / Average / Best case
+
+QuickSort: best = `O(n log n)`, avg = `O(n log n)`, **worst** = `O(n²)`.
+
+Trong phỏng vấn, mặc định nói **worst case** nếu không nói khác.
+
+<Callout type="tip">
+Khi tối ưu hóa, đừng nhắm `O(1)` nếu `n` luôn nhỏ. `O(n²)` với `n = 100` còn nhanh hơn `O(n log n)` với hằng số lớn.
+</Callout>
+
+## Space complexity
+
+Nhớ tính cả:
+
+- Bộ nhớ phụ bạn cấp (mảng, hash).
+- Stack đệ quy.
+- Input là **không** tính vào space phụ (trừ khi đề yêu cầu).

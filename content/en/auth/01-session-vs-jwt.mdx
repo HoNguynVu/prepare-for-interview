@@ -1,0 +1,32 @@
+---
+title: "Session vs JWT"
+order: 1
+level: "beginner"
+description: "The two most common auth patterns and their trade-offs."
+tags: ["auth", "session", "jwt"]
+---
+
+## Session-based
+
+Server stores a session in Redis/DB and gives the client a session ID cookie. Server looks up the session on every request.
+
+✅ Logout is instant; revocation is easy.
+❌ Server keeps state, harder to scale horizontally.
+
+## JWT
+
+A signed token containing user info. Server verifies the signature; no DB lookup needed.
+
+✅ Stateless; scales horizontally.
+❌ Hard to revoke before expiry.
+❌ Payload is base64, not encrypted.
+
+<Callout type="warning">
+JWT is **not inherently more secure** than sessions. Storing JWTs in `localStorage` opens them up to XSS theft.
+</Callout>
+
+## Best practice
+
+- Short-lived **access token** (5–15 min) + long-lived **refresh token** in HttpOnly cookie.
+- Never put secrets in JWT payload.
+- For multi-service verification, use `RS256` (asymmetric).

@@ -1,0 +1,34 @@
+---
+title: "Process vs Thread"
+order: 1
+level: "beginner"
+description: "Differences, trade-offs, and when to use each."
+tags: ["os", "process", "thread"]
+---
+
+## Process
+
+A running program with its own address space and resources. Contains at least one thread.
+
+## Thread
+
+A lightweight unit of execution inside a process. Threads in the same process share **heap**, **code**, **globals**, and **file descriptors**, but each has its own **stack** and **registers**.
+
+## Comparison
+
+| | Process | Thread |
+|---|---|---|
+| Create cost | High | Low |
+| Context switch | Expensive | Cheap |
+| Communication | IPC (pipe, socket, shm) | Shared variables |
+| Crash blast radius | Isolated | Can kill the whole process |
+
+## When to use which
+
+- **CPU-bound**: in Python use **processes** (GIL); in Java/Go use threads/goroutines.
+- **I/O-bound**: threads or async/await both work.
+- **Fault isolation**: process per unit (Chrome's per-tab processes).
+
+<Callout type="note">
+On Linux the kernel doesn't really distinguish "process" vs "thread" — both are *tasks*. The difference is flags passed to `clone()`.
+</Callout>

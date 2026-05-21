@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mv vi/oop/01-gioi-thieu.mdx vi/oop/01-introduction.mdx)",
+      "Bash(mv vi/dsa/01-do-phuc-tap.mdx vi/dsa/01-big-o.mdx)",
+      "Bash(mv vi/dsa/03-cay-do-thi.mdx vi/dsa/03-tree-graph.mdx)",
+      "Bash(mv en/oop/02-solid.mdx en/oop/05-solid.mdx)",
+      "Bash(mv en/network/02-tcp-udp.mdx en/network/02-tcp-vs-udp.mdx)"
+    ]
+  }
+}

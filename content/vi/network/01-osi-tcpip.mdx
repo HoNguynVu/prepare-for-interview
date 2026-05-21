@@ -1,0 +1,41 @@
+---
+title: "Mô hình OSI và TCP/IP"
+order: 1
+level: "beginner"
+description: "7 tầng OSI, 4 tầng TCP/IP và sự đối chiếu giữa hai mô hình."
+tags: ["network", "osi", "tcpip"]
+---
+
+## OSI — 7 tầng
+
+| # | Tầng | Nhiệm vụ | Ví dụ |
+|---|---|---|---|
+| 7 | Application | Giao diện cho ứng dụng | HTTP, FTP, DNS |
+| 6 | Presentation | Encode/encrypt | TLS, JPEG |
+| 5 | Session | Quản lý phiên | NetBIOS |
+| 4 | Transport | Đảm bảo truyền dữ liệu | TCP, UDP |
+| 3 | Network | Định tuyến gói tin | IP, ICMP |
+| 2 | Data Link | Truyền frame trên link | Ethernet, MAC |
+| 1 | Physical | Bit qua dây | Cáp, sóng |
+
+## TCP/IP — 4 tầng (thực tế dùng)
+
+1. **Link** (~OSI 1-2)
+2. **Internet** (~OSI 3)
+3. **Transport** (~OSI 4)
+4. **Application** (~OSI 5-7)
+
+## Vì sao học OSI dù thực tế dùng TCP/IP?
+
+- OSI là **mô hình tham chiếu** — giúp gỡ lỗi và thiết kế.
+- Khi network lỗi, bạn hỏi: "vấn đề ở tầng nào?" — đây là tư duy chia tầng.
+
+<Callout type="tip">
+Mẹo nhớ OSI từ 7 xuống 1: **A**ll **P**eople **S**eem **T**o **N**eed **D**ata **P**rocessing.
+</Callout>
+
+## Câu hỏi phỏng vấn điển hình
+
+- "Gói tin đi qua bao nhiêu tầng từ máy A đến máy B?" — *Xuống đủ 7 ở A, lên đủ 7 ở B.*
+- "TCP và UDP nằm ở tầng nào?" — *Transport (tầng 4).*
+- "HTTPS hoạt động ở tầng nào?" — *Application (HTTP) + Presentation (TLS).*
