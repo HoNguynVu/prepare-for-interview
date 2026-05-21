@@ -29,7 +29,7 @@ export function Navbar({
         <button
           type="button"
           onClick={onMenuClick}
-          className="rounded-md p-2 text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900 lg:hidden"
+          className="rounded-md p-2 text-zinc-800 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900 lg:hidden"
           aria-label="Open menu"
         >
           <Menu className="h-5 w-5" />

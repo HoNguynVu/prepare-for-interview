@@ -74,12 +74,17 @@ function rehypeCollapsibleSections() {
 }
 
 const prettyCodeOptions = {
-  theme: { dark: "github-dark", light: "github-light" },
+  theme: "github-dark",
   keepBackground: false,
   getHighlighter: getSingletonHighlighter,
 };
 
 const mdxComponents = {
+  pre: ({ children, ...props }: React.ComponentPropsWithoutRef<"pre">) => (
+    <pre {...props} style={{ ...props.style, backgroundColor: "rgb(24 24 27)" }}>
+      {children}
+    </pre>
+  ),
   Callout: ({ type = "note", children }: { type?: "note" | "warning" | "tip"; children: React.ReactNode }) => {
     const styles: Record<string, string> = {
       note: "border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-200",

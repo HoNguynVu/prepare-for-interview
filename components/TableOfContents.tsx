@@ -41,6 +41,10 @@ export function TableOfContents({ items, label }: { items: TocItem[]; label: str
           <li key={it.id} style={{ paddingLeft: `${(it.depth - 1) * 12}px` }}>
             <a
               href={`#${it.id}`}
+              onClick={() => {
+                const el = document.getElementById(it.id);
+                if (el?.tagName === "DETAILS") (el as HTMLDetailsElement).open = true;
+              }}
               className={cn(
                 "-ml-px block border-l border-transparent py-0.5 pl-3 text-xs transition",
                 active === it.id

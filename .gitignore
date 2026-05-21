@@ -5,3 +5,6 @@ out/
 *.log
 .DS_Store
 .vscode/
+
+.vercel
+.env*.local

@@ -15,7 +15,7 @@ export function LocaleSwitcher({ current }: { current: Locale }) {
     <Link
       href={newPath}
       className={cn(
-        "inline-flex h-9 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100",
+        "inline-flex h-9 items-center gap-1.5 rounded-lg border border-zinc-300 bg-zinc-100 px-3 text-sm font-medium text-zinc-800 transition hover:bg-zinc-200",
         "dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
       )}
       aria-label="Switch language"

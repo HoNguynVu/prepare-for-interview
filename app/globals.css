@@ -48,8 +48,8 @@
       prose-h1:text-3xl prose-h1:font-bold
       prose-h2:mt-12 prose-h2:border-b prose-h2:pb-2
       prose-a:text-brand-600 prose-a:no-underline hover:prose-a:underline dark:prose-a:text-brand-400
-      prose-code:rounded prose-code:bg-zinc-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:font-medium dark:prose-code:bg-zinc-800
-      prose-pre:rounded-xl prose-pre:border
+      prose-code:rounded prose-code:bg-zinc-900 prose-code:px-1.5 prose-code:py-0.5 prose-code:font-medium prose-code:text-zinc-100
+      prose-pre:rounded-xl prose-pre:border prose-pre:border-zinc-700
       prose-img:rounded-lg
       prose-blockquote:border-brand-500 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:not-italic;
   }
@@ -70,13 +70,10 @@ pre [data-line] {
   font-size: 0.875rem;
 }
 [data-rehype-pretty-code-title] {
-  @apply rounded-t-xl border border-b-0 border-zinc-200 bg-zinc-100 px-4 py-2 text-xs font-medium text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300;
+  @apply rounded-t-xl border border-b-0 border-zinc-700 bg-zinc-800 px-4 py-2 text-xs font-medium text-zinc-300;
 }
 [data-rehype-pretty-code-title] + pre {
   @apply rounded-t-none;
-}
-.dark pre {
-  @apply bg-zinc-900;
 }
 
 /* Collapsible h2 sections */

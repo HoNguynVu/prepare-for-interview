@@ -64,12 +64,15 @@ export function Sidebar({ locale, lessonsByTopic, open, onClose }: SidebarProps)
                   <div className="flex items-stretch">
                     <Link
                       href={topicHref}
-                      onClick={onClose}
+                      onClick={() => {
+                        setExpanded((e) => ({ ...e, [topic.id]: true }));
+                        onClose();
+                      }}
                       className={cn(
                         "flex flex-1 items-center gap-2 rounded-l-lg px-3 py-2 text-sm font-medium transition",
                         isActive
                           ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
-                          : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                          : "text-zinc-800 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900"
                       )}
                     >
                       <Icon className="h-4 w-4 shrink-0" />
@@ -79,7 +82,7 @@ export function Sidebar({ locale, lessonsByTopic, open, onClose }: SidebarProps)
                       type="button"
                       onClick={() => setExpanded((e) => ({ ...e, [topic.id]: !e[topic.id] }))}
                       className={cn(
-                        "rounded-r-lg px-2 text-zinc-500 transition hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900",
+                        "rounded-r-lg px-2 text-zinc-600 transition hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900",
                         isActive && "dark:bg-zinc-800/60"
                       )}
                       aria-label="Toggle"
