@@ -1,0 +1,67 @@
+---
+title: "Encapsulation"
+order: 2
+level: "beginner"
+description: "Hiding internal state and exposing controlled behavior through access modifiers."
+tags: ["oop", "encapsulation"]
+---
+
+## What is Encapsulation?
+
+**Encapsulation** means bundling data and the methods that operate on it into a single class, while **hiding internal state** from outside code.
+
+Goals:
+- Protect data integrity (enforce invariants)
+- Reduce coupling — callers depend on behavior, not implementation
+- Allow internal refactoring without breaking external code
+
+## Access Modifiers in C++
+
+| Modifier | Same class | Derived class | Outside |
+|---|---|---|---|
+| `private` | ✅ | ❌ | ❌ |
+| `protected` | ✅ | ✅ | ❌ |
+| `public` | ✅ | ✅ | ✅ |
+
+In C++, `class` members are `private` by default; `struct` members are `public` by default.
+
+## Example
+
+```cpp
+class BankAccount {
+    std::string owner;   // private — hidden from outside
+    double balance;      // private — can't be touched directly
+
+public:
+    BankAccount(const std::string& name, double initial)
+        : owner(name), balance(initial) {}
+
+    // Expose behavior with validation — not raw state
+    void deposit(double amount) {
+        if (amount <= 0) throw std::invalid_argument("Amount must be positive");
+        balance += amount;
+    }
+
+    bool withdraw(double amount) {
+        if (amount > balance) return false;
+        balance -= amount;
+        return true;
+    }
+
+    double getBalance() const { return balance; }
+};
+
+BankAccount acc("Alice", 100.0);
+acc.deposit(50.0);
+// acc.balance = -9999;  ❌ compile error — balance is private
+```
+
+<Callout type="tip">
+Don't add getters/setters blindly. Expose **behavior**, not raw state. A class with a public setter for every field has no encapsulation at all.
+</Callout>
+
+## Key Points
+
+- Keep fields `private`; expose via `public` methods that validate
+- **Encapsulation** hides *state*; **Abstraction** hides *complexity*
+- The goal is to own the invariant — callers can't put the object in an invalid state

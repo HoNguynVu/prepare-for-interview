@@ -15,48 +15,133 @@ tags: ["oop", "polymorphism"]
 
 ## Overloading (cùng tên, khác signature)
 
-```java
+```cpp
 class Printer {
-    void print(int n) { ... }
-    void print(String s) { ... }
-    void print(int n, String s) { ... }
-}
+public:
+    void print(int n)               { std::cout << n; }
+    void print(const std::string& s){ std::cout << s; }
+    void print(double d, int prec)  { /* in số thực với độ chính xác */ }
+};
+
+// Compiler chọn đúng hàm dựa trên kiểu tham số — quyết định lúc build
+Printer p;
+p.print(42);          // gọi print(int)
+p.print("Hello");     // gọi print(string)
+p.print(3.14, 2);     // gọi print(double, int)
 ```
 
-Compiler chọn method dựa trên **kiểu tham số** lúc biên dịch.
+Compiler chọn method dựa trên **kiểu tham số** lúc biên dịch — đây là **early binding**.
 
 ## Overriding (con override cha)
 
-```java
-class Animal { String sound() { return "..."; } }
-class Dog extends Animal { @Override String sound() { return "woof"; } }
+Trong C++, muốn override, hàm cha **bắt buộc** phải có từ khóa `virtual`. Nếu không có `virtual`, class con chỉ **hide** (ẩn) hàm cha, **không tạo ra polymorphism**:
 
-Animal a = new Dog();
-a.sound(); // "woof" — quyết định lúc runtime
+```cpp
+class Animal {
+public:
+    virtual std::string sound() const { return "..."; }
+    virtual ~Animal() {}
+};
+
+class Dog : public Animal {
+public:
+    std::string sound() const override { return "Woof!"; }
+};
+
+class Cat : public Animal {
+public:
+    std::string sound() const override { return "Meow!"; }
+};
+
+// Runtime polymorphism — quyết định lúc chạy dựa trên object thực tế
+Animal* animals[] = { new Dog(), new Cat(), new Dog() };
+for (Animal* a : animals) {
+    std::cout << a->sound() << std::endl;  // Woof!, Meow!, Woof!
+    delete a;
+}
 ```
 
-JVM dùng **virtual method table** để dispatch đúng phương thức của subclass.
+C++ dùng **vtable** (virtual method table) — mỗi class có `virtual` được gắn một bảng con trỏ hàm. Lúc runtime, chương trình tra bảng này để gọi đúng implementation.
+
+## Early Binding và Late Binding
+
+Đây là hai cách quyết định "hàm nào được gọi":
+
+| | Early Binding | Late Binding |
+|---|---|---|
+| **Còn gọi** | Static dispatch | Dynamic dispatch |
+| **Khi quyết định** | Lúc biên dịch | Lúc chạy |
+| **Cơ chế** | Địa chỉ hàm cứng trong code | Tra vtable theo object thực tế |
+| **Ví dụ** | Overloading, non-virtual call | Overriding (`virtual`) |
+
+```cpp
+class Animal {
+public:
+    std::string earlyBound() const { return "Animal"; }         // non-virtual: early binding
+    virtual std::string lateBound() const { return "Animal"; }  // virtual: late binding
+};
+
+class Dog : public Animal {
+public:
+    std::string earlyBound() const { return "Dog"; }
+    std::string lateBound() const override { return "Dog"; }
+};
+
+Dog dog;
+Animal* ptr = &dog;
+
+// Early binding: compiler thấy ptr là Animal* → hardcode gọi Animal::earlyBound()
+std::cout << ptr->earlyBound();  // "Animal" — sai! không phản ánh object thực tế
+
+// Late binding: runtime tra vtable của object Dog → gọi Dog::lateBound()
+std::cout << ptr->lateBound();   // "Dog" — đúng! phản ánh object thực tế
+```
+
+<Callout type="tip">
+**Câu hỏi phỏng vấn:** "Có thể override hàm không có `virtual` không?"
+
+Trong C++: Không — không có `virtual` thì không có polymorphism. Class con chỉ "hide" hàm cha. Phải thêm `virtual` vào hàm cha thì mới override được đúng nghĩa.
+</Callout>
 
 ## Vì sao polymorphism quan trọng?
 
 - Cho phép **viết code chống lại interface** thay vì implementation cụ thể.
 - Là nền tảng của **dependency inversion** (chữ D trong SOLID).
-- Giúp mã dễ mở rộng (open/closed principle).
+- Giúp mã dễ mở rộng — thêm loại mới không cần sửa code cũ (open/closed principle).
 
-```java
-interface PaymentGateway {
-    boolean charge(double amount);
-}
+```cpp
+class IPaymentGateway {
+public:
+    virtual bool charge(double amount) = 0;
+    virtual ~IPaymentGateway() {}
+};
 
 class OrderService {
-    private PaymentGateway gateway;
-    OrderService(PaymentGateway g) { this.gateway = g; }
-    void checkout(double amt) { gateway.charge(amt); }
-}
+    IPaymentGateway* gateway;  // chỉ biết về interface
+
+public:
+    OrderService(IPaymentGateway* g) : gateway(g) {}
+
+    void checkout(double amount) {
+        if (!gateway->charge(amount))
+            throw std::runtime_error("Payment failed");
+    }
+};
+
+// Thêm gateway mới không cần sửa OrderService
+class StripeGateway : public IPaymentGateway {
+public:
+    bool charge(double amount) override { /* gọi Stripe API */ return true; }
+};
+
+class MoMoGateway : public IPaymentGateway {
+public:
+    bool charge(double amount) override { /* gọi MoMo API */ return true; }
+};
 ```
 
-Thêm gateway mới (Stripe, PayPal, MoMo) không cần sửa `OrderService`.
+Thêm `ZaloPayGateway` mới? Chỉ cần implement `IPaymentGateway` — không đụng gì tới `OrderService`.
 
 <Callout type="note">
-Trong interview, nếu bạn nói "polymorphism là 1 interface nhiều behavior", hãy follow-up bằng một ví dụ cụ thể như trên — sẽ ăn điểm hơn nhiều.
+Trong phỏng vấn, nếu bạn nói "polymorphism là 1 interface nhiều behavior", hãy follow-up bằng ví dụ cụ thể như `IPaymentGateway` trên — sẽ ăn điểm hơn nhiều so với chỉ định nghĩa lý thuyết.
 </Callout>

@@ -10,15 +10,31 @@ tags: ["oop", "inheritance"]
 
 Một class B *kế thừa* class A có nghĩa B nhận được toàn bộ thuộc tính và phương thức của A, đồng thời có thể bổ sung hoặc **override** chúng.
 
-```java
-class Animal {
-    public void breathe() { /* ... */ }
-}
+Trong C++, cú pháp kế thừa là `class Child : public Parent`:
 
-class Dog extends Animal {
-    public void bark() { /* ... */ }
-}
+```cpp
+class Animal {
+public:
+    std::string name;
+    Animal(const std::string& n) : name(n) {}
+
+    virtual void breathe() { std::cout << name << " is breathing" << std::endl; }
+    virtual ~Animal() {}
+};
+
+class Dog : public Animal {  // Dog kế thừa Animal
+public:
+    Dog(const std::string& n) : Animal(n) {}  // gọi constructor cha
+
+    void bark() { std::cout << name << " says: Woof!" << std::endl; }
+};
+
+Dog rex("Rex");
+rex.breathe();  // kế thừa từ Animal
+rex.bark();     // phương thức riêng của Dog
 ```
+
+Từ khóa `public` trong `class Dog : public Animal` có nghĩa là các member `public` của `Animal` vẫn là `public` trong `Dog`. Còn `private`/`protected` inheritance làm hạn chế phạm vi truy cập (ít dùng).
 
 ## "Is-a" vs "Has-a"
 
@@ -41,8 +57,77 @@ Composition cho phép tổ hợp hành vi linh hoạt qua interface và delegati
 Trong phỏng vấn: nếu được hỏi "khi nào dùng inheritance?", nói rõ bạn ưu tiên composition, và chỉ dùng inheritance khi quan hệ "is-a" **thật sự** rõ ràng và bạn muốn polymorphism.
 </Callout>
 
-## Multiple inheritance
+## Từ khóa `base` — Gọi hàm/constructor cha
+
+Trong C#/Java dùng `base`/`super` để gọi thành phần của class cha. Trong C++, cú pháp tương đương là **`ParentClass::method()`**:
+
+```cpp
+class Shape {
+protected:
+    double x, y;
+
+public:
+    Shape(double x, double y) : x(x), y(y) {}
+
+    virtual void describe() const {
+        std::cout << "Shape at (" << x << ", " << y << ")" << std::endl;
+    }
+};
+
+class Circle : public Shape {
+    double radius;
+
+public:
+    // Gọi constructor cha qua initializer list
+    Circle(double x, double y, double r) : Shape(x, y), radius(r) {}
+
+    void describe() const override {
+        Shape::describe();  // ← C++ equivalent của base.describe()
+        std::cout << "  Radius: " << radius << std::endl;
+    }
+};
+
+Circle c(1.0, 2.0, 5.0);
+c.describe();
+// Shape at (1, 2)
+//   Radius: 5
+```
+
+## Multiple Inheritance & Diamond Problem
 
 - Java/C# **không** cho phép multiple inheritance từ class (chỉ qua interface).
-- C++ cho phép, dẫn đến *diamond problem*.
-- Giải pháp hiện đại: **interfaces** + **mixin** + **trait**.
+- C++ **cho phép** kế thừa từ nhiều class — mạnh nhưng dễ gây lỗi.
+
+**Diamond Problem** xảy ra khi hai class cha cùng kế thừa một class gốc:
+
+```cpp
+class A {
+public:
+    void hello() { std::cout << "Hello from A" << std::endl; }
+};
+
+class B : public A {};  // B có A::hello()
+class C : public A {};  // C có A::hello()
+
+class D : public B, public C {};  // D có 2 bản sao của A!
+
+D obj;
+obj.hello();        // ❌ Ambiguous: B::A::hello() hay C::A::hello()?
+obj.B::hello();     // ✅ Phải chỉ định rõ — verbose và xấu
+```
+
+**Giải pháp trong C++: `virtual` inheritance** — đảm bảo chỉ có 1 bản sao của class gốc:
+
+```cpp
+class B : virtual public A {};  // virtual inheritance
+class C : virtual public A {};  // virtual inheritance
+
+class D : public B, public C {};  // ✅ Chỉ có 1 bản sao của A
+
+D obj;
+obj.hello();  // ✅ Rõ ràng, không ambiguous
+```
+
+<Callout type="note">
+Trong thực tế, C++ virtual inheritance khá phức tạp (overhead về memory và performance). Đa số dự án modern tránh multiple inheritance từ class — thay bằng interface (pure abstract class) + composition.
+</Callout>

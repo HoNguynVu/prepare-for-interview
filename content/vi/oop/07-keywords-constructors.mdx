@@ -1,0 +1,406 @@
+---
+title: "Class, Object, Constructor & Từ khóa quan trọng"
+order: 7
+level: "intermediate"
+description: "Class vs Object, constructor overloading, virtual/override, base keyword, abstract+sealed, Composition vs Inheritance."
+tags: ["oop", "class", "object", "constructor", "virtual", "composition"]
+---
+
+## Class và Object: Blueprint vs Instance
+
+Đây là câu hỏi phỏng vấn cơ bản nhất trong OOP, nhưng nếu trả lời mờ nhạt sẽ mất điểm.
+
+**Class** là *bản thiết kế* (blueprint) — nằm trong code, mô tả cấu trúc và hành vi, **chưa chiếm bộ nhớ** runtime.  
+**Object** là *thực thể* cụ thể được tạo ra từ bản thiết kế đó, **chiếm bộ nhớ** trong RAM lúc chương trình chạy.
+
+```cpp
+// Class: chỉ là định nghĩa trên code — chưa có gì trong RAM
+class Car {
+public:
+    std::string color;
+    int speed;
+
+    void accelerate(int amount) { speed += amount; }
+    void brake(int amount) { speed = std::max(0, speed - amount); }
+    void describe() const {
+        std::cout << color << " car, speed: " << speed << std::endl;
+    }
+};
+
+// Object: tạo ra thực thể thật trong bộ nhớ
+Car myCar;              // object trên stack (tự giải phóng khi ra khỏi scope)
+myCar.color = "Red";
+myCar.speed = 0;
+
+Car* yourCar = new Car();  // object trên heap (phải gọi delete để giải phóng)
+yourCar->color = "Blue";
+
+// Từ 1 class, tạo được nhiều objects hoàn toàn độc lập
+Car car1, car2, car3;   // 3 objects riêng biệt — thay đổi car1 không ảnh hưởng car2
+car1.color = "Red";
+car2.color = "Green";   // car1 vẫn là "Red"
+```
+
+<Callout type="tip">
+Câu trả lời gọn khi phỏng vấn: *"Class là khuôn đúc trên giấy, Object là vật thể thật được đúc ra từ khuôn đó — nó chiếm bộ nhớ và có trạng thái riêng. Một class có thể tạo ra vô số objects."*
+</Callout>
+
+---
+
+## Constructor & Constructor Overloading
+
+**Constructor** (hàm khởi tạo) là hàm đặc biệt **tự động chạy khi object được tạo**. Đặc điểm:
+- Cùng tên với class
+- Không có kiểu trả về (kể cả `void`)
+- Mục đích: gán giá trị ban đầu, đảm bảo object luôn ở trạng thái **hợp lệ** ngay từ đầu
+
+**Constructor Overloading** = tạo nhiều constructor với số lượng/kiểu tham số khác nhau, linh hoạt khi khởi tạo:
+
+```cpp
+class BankAccount {
+    std::string owner;
+    double balance;
+
+public:
+    // Constructor 1: không tham số — tài khoản mặc định
+    BankAccount() : owner("Unknown"), balance(0.0) {}
+
+    // Constructor 2: chỉ có tên chủ — số dư bắt đầu từ 0
+    BankAccount(const std::string& name) : owner(name), balance(0.0) {}
+
+    // Constructor 3: đầy đủ — tên và số dư ban đầu
+    BankAccount(const std::string& name, double initialBalance)
+        : owner(name), balance(initialBalance) {
+        if (initialBalance < 0)
+            throw std::invalid_argument("Initial balance cannot be negative");
+    }
+
+    void deposit(double amount) {
+        if (amount <= 0) throw std::invalid_argument("Amount must be positive");
+        balance += amount;
+    }
+
+    double getBalance() const { return balance; }
+    std::string getOwner() const { return owner; }
+};
+
+// Sử dụng:
+BankAccount acc1;                        // gọi Constructor 1 → Unknown, $0
+BankAccount acc2("Alice");               // gọi Constructor 2 → Alice, $0
+BankAccount acc3("Bob", 1000.0);         // gọi Constructor 3 → Bob, $1000
+```
+
+<Callout type="note">
+Trong C++, nếu bạn không khai báo constructor nào, compiler tự tạo **default constructor** rỗng. Nhưng nếu đã khai báo bất kỳ constructor nào (kể cả chỉ 1), compiler **sẽ không** tự tạo default constructor nữa — bạn phải khai báo tường minh nếu cần.
+</Callout>
+
+---
+
+## `virtual` và `override` — Bắt buộc để Override
+
+Đây là điểm C++ khác biệt với nhiều ngôn ngữ khác: muốn override, hàm cha **bắt buộc** phải khai báo `virtual`.
+
+### Không có `virtual` = Early Binding (compile-time)
+
+```cpp
+class Animal {
+public:
+    std::string sound() const { return "..."; }  // KHÔNG virtual
+};
+
+class Dog : public Animal {
+public:
+    std::string sound() const { return "Woof!"; }  // chỉ là "hide", không phải override
+};
+
+Dog dog;
+Animal* ptr = &dog;
+std::cout << ptr->sound();  // "..." — gọi Animal::sound()
+// Vì ptr kiểu Animal* → compiler quyết định ngay lúc build: gọi Animal::sound()
+```
+
+### Có `virtual` = Late Binding (runtime)
+
+```cpp
+class Animal {
+public:
+    virtual std::string sound() const { return "..."; }  // virtual → late binding
+    virtual ~Animal() {}
+};
+
+class Dog : public Animal {
+public:
+    std::string sound() const override { return "Woof!"; }  // override xác nhận ghi đè
+};
+
+class Cat : public Animal {
+public:
+    std::string sound() const override { return "Meow!"; }
+};
+
+// Polymorphism: một interface, nhiều hành vi
+Animal* animals[] = { new Dog(), new Cat(), new Dog() };
+for (Animal* a : animals) {
+    std::cout << a->sound() << std::endl;  // Woof!, Meow!, Woof!
+    delete a;
+}
+```
+
+**Tại sao nên dùng từ khóa `override`?**
+
+`override` (C++11) không thay đổi behavior, nhưng giúp compiler **phát hiện lỗi** khi bạn viết sai tên hàm:
+
+```cpp
+class Animal {
+public:
+    virtual std::string sound() const { return "..."; }
+};
+
+class Dog : public Animal {
+public:
+    // ❌ Không có override — compiler không báo lỗi dù tên sai (typo)
+    std::string sounnd() const { return "Woof!"; }  // typo: "sounnd"
+
+    // ✅ Có override — compiler báo lỗi ngay: "sounnd does not override any base class method"
+    std::string sounnd() const override { return "Woof!"; }
+};
+```
+
+---
+
+## `base` Keyword — Tương đương trong C++
+
+Trong C#/Java, từ khóa `base`/`super` dùng để gọi hàm hoặc constructor của class cha. Trong C++, cú pháp tương đương là **`ParentClassName::method()`**:
+
+```cpp
+class Animal {
+protected:
+    std::string name;
+
+public:
+    Animal(const std::string& n) : name(n) {}
+
+    virtual void describe() const {
+        std::cout << "Animal: " << name << std::endl;
+    }
+};
+
+class Dog : public Animal {
+    std::string breed;
+
+public:
+    // Gọi constructor cha qua initializer list
+    Dog(const std::string& n, const std::string& b)
+        : Animal(n), breed(b) {}  // ← C++ equivalent của base(n) / super(n)
+
+    void describe() const override {
+        Animal::describe();  // ← C++ equivalent của base.describe() / super.describe()
+        std::cout << "Breed: " << breed << std::endl;
+    }
+};
+
+// Output:
+// Animal: Rex
+// Breed: Labrador
+Dog rex("Rex", "Labrador");
+rex.describe();
+```
+
+<Callout type="tip">
+Nhớ: trong C++, gọi hàm cha là `ParentClass::method()`. Phải dùng cú pháp này vì nếu gọi `this->method()` thông thường, C++ sẽ dùng vtable → gọi implementation của class thực tế (chính mình), tạo ra vòng lặp vô hạn.
+</Callout>
+
+---
+
+## `abstract` + `sealed` — Hai Khái Niệm Mâu Thuẫn
+
+**Câu hỏi phỏng vấn:** *"Có thể kết hợp `abstract` và `sealed` cho một class không?"*
+
+**Câu trả lời: Tuyệt đối không.** Đây là hai ý tưởng triệt tiêu nhau:
+
+| Keyword | Ý nghĩa |
+|---|---|
+| `abstract` (C#) | **Bắt buộc** class khác phải kế thừa để có thể sử dụng |
+| `sealed` (C#) / `final` (C++11) | **Cấm tuyệt đối** mọi class khác kế thừa |
+
+Trong C++, từ khóa tương đương với `sealed` là **`final`**:
+
+```cpp
+class Base {
+public:
+    virtual void greet() { std::cout << "Hello from Base" << std::endl; }
+};
+
+class Derived final : public Base {  // final: không ai được kế thừa Derived
+public:
+    void greet() override { std::cout << "Hello from Derived" << std::endl; }
+};
+
+// ❌ Compile error: cannot derive from 'Derived' because it has final specifier
+class SubDerived : public Derived { };
+```
+
+Cố tình kết hợp `abstract` + `sealed`/`final` là lỗi logic:
+- `abstract` nói: *"Tôi chưa hoàn chỉnh, bạn phải kế thừa tôi để dùng được"*
+- `final`/`sealed` nói: *"Không ai được phép kế thừa tôi"*
+
+→ Hai yêu cầu mâu thuẫn hoàn toàn — compiler sẽ từ chối.
+
+---
+
+## Composition vs Inheritance — Ưu tiên Composition
+
+Đây là nguyên tắc thiết kế quan trọng: **"Favor Composition over Inheritance"**.
+
+### Vấn đề của Inheritance (tight coupling)
+
+Inheritance tạo ra sự phụ thuộc rất chặt:
+- Thay đổi class cha có thể **phá vỡ tất cả class con** ("Fragile base class problem")
+- Class con phụ thuộc vào **implementation chi tiết** của class cha, không chỉ interface
+- Rất khó viết **Unit Test** độc lập
+
+```cpp
+// ❌ Inheritance — cứng nhắc, dễ gặp vấn đề
+class FlyingAnimal {
+public:
+    virtual void fly() { std::cout << "Flying..." << std::endl; }
+    virtual void breathe() { std::cout << "Breathing..." << std::endl; }
+};
+
+class Duck : public FlyingAnimal { };         // OK — vịt bay được
+class Penguin : public FlyingAnimal { };      // ❌ Vấn đề: chim cánh cụt KHÔNG bay được
+                                              // nhưng vẫn kế thừa fly() từ FlyingAnimal
+                                              // → phải override để throw exception — ugly!
+```
+
+### Composition (loose coupling)
+
+Composition = "nhúng" class khác vào làm thuộc tính (Has-A), linh hoạt hơn nhiều:
+
+```cpp
+// ✅ Composition — linh hoạt, dễ mở rộng
+class IFlyBehavior {
+public:
+    virtual void fly() = 0;
+    virtual ~IFlyBehavior() {}
+};
+
+class FlyWithWings : public IFlyBehavior {
+public:
+    void fly() override { std::cout << "Flying with wings!" << std::endl; }
+};
+
+class NoFly : public IFlyBehavior {
+public:
+    void fly() override { std::cout << "Cannot fly." << std::endl; }
+};
+
+class Duck {
+    IFlyBehavior* flyBehavior;  // "Has-A" relationship — chứa behavior
+    std::string name;
+
+public:
+    Duck(const std::string& n, IFlyBehavior* fb) : name(n), flyBehavior(fb) {}
+
+    void performFly() { flyBehavior->fly(); }
+
+    // Có thể thay đổi behavior lúc runtime!
+    void setFlyBehavior(IFlyBehavior* fb) { flyBehavior = fb; }
+};
+
+// Sử dụng:
+FlyWithWings wings;
+NoFly noFly;
+
+Duck wildDuck("Wild Duck", &wings);
+wildDuck.performFly();  // "Flying with wings!"
+
+Duck rubberDuck("Rubber Duck", &noFly);
+rubberDuck.performFly();  // "Cannot fly."
+
+// Thay đổi behavior lúc runtime
+wildDuck.setFlyBehavior(&noFly);
+wildDuck.performFly();  // "Cannot fly." — không cần sửa class Duck
+```
+
+<Callout type="tip">
+**Câu phỏng vấn:** "Inheritance hay Composition?"
+
+Trả lời chuẩn: *"Tôi ưu tiên Composition vì nó tạo loose coupling, dễ test, và linh hoạt thay đổi behavior lúc runtime. Tôi chỉ dùng Inheritance khi quan hệ Is-A thật sự rõ ràng — ví dụ `Dog` là `Animal` — và khi muốn tái sử dụng code chung qua polymorphism."*
+</Callout>
+
+---
+
+## OOP trong Backend Project thực tế
+
+Ứng dụng thực tế các khái niệm OOP trong backend (ví dụ web API):
+
+| Khái niệm OOP | Áp dụng thực tế |
+|---|---|
+| **Interface** | `IUserRepository` — tách biệt data access và business logic |
+| **Abstract Class** | `BaseEntity` — chứa `id`, `createdAt` dùng chung cho mọi entity |
+| **Encapsulation** | Domain entity dùng private setter, validate trong method |
+| **Polymorphism** | Service dùng `IPaymentGateway` — swap Stripe/PayPal không cần sửa service |
+| **Composition** | `UserService` chứa `IUserRepository` thay vì kế thừa |
+
+```cpp
+// Mini backend architecture trong C++
+
+class IUserRepository {
+public:
+    virtual User* findById(int id) = 0;
+    virtual void save(const User& user) = 0;
+    virtual ~IUserRepository() {}
+};
+
+class BaseEntity {
+protected:
+    int id;
+    std::string createdAt;
+
+public:
+    BaseEntity(int id) : id(id), createdAt("2024-01-01") {}
+    int getId() const { return id; }
+    virtual bool isValid() const = 0;
+};
+
+class User : public BaseEntity {
+    std::string email;  // private — chỉ thay đổi qua method có validation
+
+public:
+    User(int id, const std::string& email) : BaseEntity(id) {
+        changeEmail(email);  // validate ngay khi tạo
+    }
+
+    void changeEmail(const std::string& newEmail) {
+        if (newEmail.find('@') == std::string::npos)
+            throw std::invalid_argument("Invalid email format");
+        this->email = newEmail;
+    }
+
+    std::string getEmail() const { return email; }
+
+    bool isValid() const override {
+        return !email.empty() && email.find('@') != std::string::npos;
+    }
+};
+
+class UserService {
+    IUserRepository* repo;  // Composition — chứa repository qua interface
+
+public:
+    UserService(IUserRepository* r) : repo(r) {}
+
+    User* getUser(int id) { return repo->findById(id); }
+
+    void createUser(int id, const std::string& email) {
+        User newUser(id, email);
+        if (!newUser.isValid()) throw std::invalid_argument("Invalid user data");
+        repo->save(newUser);
+    }
+};
+```
+
+<Callout type="note">
+Đây là kiến trúc phổ biến trong các dự án backend thực tế: `UserService` không biết gì về database — nó chỉ giao tiếp qua `IUserRepository`. Kết quả: dễ test (inject fake repo), dễ đổi database, business logic độc lập hoàn toàn với infrastructure.
+</Callout>

@@ -1,0 +1,294 @@
+---
+title: "Abstract Class & Interface"
+order: 6
+level: "intermediate"
+description: "Phân biệt Abstract Class và Interface, khi nào dùng cái nào, và ví dụ thực tế trong C++."
+tags: ["oop", "abstract", "interface", "abstraction"]
+---
+
+## Abstract Class là gì?
+
+**Abstract Class** (lớp trừu tượng) là một class **chưa hoàn chỉnh** — nó định nghĩa phần hành vi chung, nhưng "nhường" lại phần còn lại cho class con tự hoàn thiện.
+
+Đặc điểm của Abstract Class:
+- **Có thể** có thuộc tính (fields/state)
+- **Có thể** có phương thức đã được cài đặt hoàn chỉnh (concrete methods)
+- **Phải** có ít nhất một **phương thức thuần ảo** (pure virtual function) trong C++
+- **Không thể** được khởi tạo trực tiếp bằng `new`
+
+Trong C++, abstract class được tạo ra bằng cách khai báo ít nhất một hàm **pure virtual** (cú pháp `= 0`):
+
+```cpp
+class Shape {
+protected:
+    double x, y;  // có state — abstract class được phép có thuộc tính
+
+public:
+    Shape(double x, double y) : x(x), y(y) {}
+
+    virtual double area() const = 0;  // pure virtual — bắt buộc class con phải override
+
+    void move(double dx, double dy) {  // phương thức đã có implementation hoàn chỉnh
+        x += dx;
+        y += dy;
+    }
+
+    virtual ~Shape() {}  // luôn để destructor là virtual khi dùng kế thừa
+};
+
+class Circle : public Shape {
+    double radius;
+
+public:
+    Circle(double x, double y, double r) : Shape(x, y), radius(r) {}
+
+    double area() const override {
+        return 3.14159 * radius * radius;
+    }
+};
+
+class Rectangle : public Shape {
+    double w, h;
+
+public:
+    Rectangle(double x, double y, double w, double h)
+        : Shape(x, y), w(w), h(h) {}
+
+    double area() const override { return w * h; }
+};
+```
+
+`Shape` là abstract class: có state (`x`, `y`), có implementation (`move`), nhưng `area()` là pure virtual nên **không thể** tạo `Shape s;` trực tiếp.
+
+---
+
+## Interface là gì?
+
+Trong C#/Java, **Interface** là một "bản hợp đồng" — chỉ chứa **khai báo hành vi** (không có state, không có implementation). C++ không có từ khóa `interface` riêng, nhưng ta mô phỏng bằng abstract class **thuần** (toàn pure virtual, không có data members):
+
+```cpp
+// C++ Interface (simulation) — không có state, toàn pure virtual
+class IDrawable {
+public:
+    virtual void draw() const = 0;
+    virtual void resize(double factor) = 0;
+    virtual ~IDrawable() {}
+};
+
+class IPrintable {
+public:
+    virtual void print() const = 0;
+    virtual ~IPrintable() {}
+};
+```
+
+Điểm mạnh: một class có thể kế thừa **nhiều** interface cùng lúc:
+
+```cpp
+// Circle kế thừa cả Shape (abstract class) và 2 interface
+class Circle : public Shape, public IDrawable, public IPrintable {
+    double radius;
+
+public:
+    Circle(double x, double y, double r) : Shape(x, y), radius(r) {}
+
+    double area() const override { return 3.14159 * radius * radius; }
+    void draw() const override { /* vẽ ra màn hình */ }
+    void resize(double factor) override { radius *= factor; }
+    void print() const override { /* in thông tin circle */ }
+};
+```
+
+---
+
+## Bảng so sánh chi tiết
+
+| Tiêu chí | Abstract Class | Interface (C++ simulation) |
+|---|---|---|
+| **Mối quan hệ** | "Is-A" (là một) | "Can-Do" (có khả năng làm) |
+| **Kế thừa** | Chỉ 1 class cha | Nhiều interface cùng lúc |
+| **State (fields)** | Có thể có | Không có (chỉ virtual destructor) |
+| **Implementation** | Có thể có | Không (toàn pure virtual) |
+| **Khởi tạo trực tiếp** | ❌ Không được | ❌ Không được |
+| **Dùng khi nào** | Họ hàng gần, tái dùng code | Hợp đồng giữa các module |
+
+---
+
+## Không thể `new` trực tiếp — tại sao?
+
+Cả hai đều là những "bản thiết kế chưa hoàn chỉnh" — chúng còn có phương thức chưa được cài đặt, nên **không thể tạo ra thực thể** (instance):
+
+```cpp
+Shape s;            // ❌ compile error: "cannot instantiate abstract type 'Shape'"
+IDrawable d;        // ❌ compile error tương tự
+
+Circle c(0, 0, 5);          // ✅ Circle là concrete class — hoàn chỉnh, được
+Shape* ptr = new Circle(0, 0, 5);  // ✅ con trỏ kiểu cha trỏ vào object con — được
+```
+
+Ẩn dụ: *bản thiết kế ngôi nhà* (abstract class/interface) không thể ở được — bạn phải *xây nhà thật* (concrete class) từ bản thiết kế đó.
+
+---
+
+## Khi nào dùng Abstract Class?
+
+Dùng Abstract Class khi các class con **có quan hệ "họ hàng" thật sự** và muốn **tái sử dụng code chung**:
+
+```cpp
+// BaseEntity: abstract class chứa các field dùng chung cho mọi entity trong hệ thống
+class BaseEntity {
+protected:
+    int id;
+    std::string createdAt;
+
+public:
+    BaseEntity(int id) : id(id), createdAt("2024-01-01") {}
+
+    int getId() const { return id; }
+    std::string getCreatedAt() const { return createdAt; }
+
+    virtual bool isValid() const = 0;  // mỗi entity có logic validate riêng
+    virtual std::string toString() const = 0;
+};
+
+class User : public BaseEntity {
+    std::string email;
+
+public:
+    User(int id, const std::string& email)
+        : BaseEntity(id), email(email) {}
+
+    bool isValid() const override {
+        return !email.empty() && email.find('@') != std::string::npos;
+    }
+
+    std::string toString() const override {
+        return "User[" + std::to_string(id) + ", " + email + "]";
+    }
+};
+
+class Product : public BaseEntity {
+    std::string name;
+    double price;
+
+public:
+    Product(int id, const std::string& name, double price)
+        : BaseEntity(id), name(name), price(price) {}
+
+    bool isValid() const override { return price > 0 && !name.empty(); }
+
+    std::string toString() const override {
+        return "Product[" + name + ", $" + std::to_string(price) + "]";
+    }
+};
+```
+
+`User` và `Product` đều chia sẻ `id`, `createdAt`, `getId()` từ `BaseEntity` — không cần viết lại.
+
+<Callout type="tip">
+Dùng Abstract Class cho quan hệ **Is-A** khi muốn **tái sử dụng code**. Ví dụ thực tế: `BaseEntity` cho các entity dùng chung các trường `id`, `createdAt`, `updatedAt`.
+</Callout>
+
+---
+
+## Khi nào dùng Interface?
+
+Dùng Interface khi muốn **tách biệt hoàn toàn** giữa định nghĩa và cài đặt — đặc biệt quan trọng cho **Dependency Injection** và **Repository Pattern**:
+
+```cpp
+// IRepository: giao diện chuẩn cho data access
+class IUserRepository {
+public:
+    virtual User* findById(int id) = 0;
+    virtual void save(const User& user) = 0;
+    virtual void deleteById(int id) = 0;
+    virtual ~IUserRepository() {}
+};
+
+// Service chỉ biết về interface — không quan tâm database là MySQL hay MongoDB
+class UserService {
+    IUserRepository* repo;
+
+public:
+    UserService(IUserRepository* r) : repo(r) {}
+
+    User* getUser(int id) {
+        return repo->findById(id);
+    }
+
+    void createUser(const User& user) {
+        if (!user.isValid()) throw std::invalid_argument("Invalid user");
+        repo->save(user);
+    }
+};
+
+// Cài đặt thật — MySQL
+class MySQLUserRepository : public IUserRepository {
+public:
+    User* findById(int id) override { /* query MySQL */ return nullptr; }
+    void save(const User& user) override { /* INSERT INTO users... */ }
+    void deleteById(int id) override { /* DELETE FROM users... */ }
+};
+
+// Cài đặt cho test — dữ liệu trong RAM
+class InMemoryUserRepository : public IUserRepository {
+    std::map<int, User> store;
+public:
+    User* findById(int id) override {
+        auto it = store.find(id);
+        return it != store.end() ? &it->second : nullptr;
+    }
+    void save(const User& user) override { store[user.getId()] = user; }
+    void deleteById(int id) override { store.erase(id); }
+};
+```
+
+Muốn đổi từ MySQL sang PostgreSQL? Chỉ cần viết class mới implement `IUserRepository` — **không cần đụng vào `UserService`**.
+
+Muốn viết Unit Test? Inject `InMemoryUserRepository` vào — không cần database thật.
+
+<Callout type="tip">
+Dùng Interface cho quan hệ **Can-Do** và **loose coupling**. Ví dụ thực tế: `IUserRepository` để tách biệt business logic với database. Kết hợp với Dependency Injection để dễ test và mở rộng.
+</Callout>
+
+---
+
+## Default Interface Methods (C# 8.0+)
+
+Trong C# từ phiên bản 8.0, interface được phép có implementation mặc định. Đây là tính năng giúp **backward compatibility** — thêm method mới vào interface cũ mà không phá vỡ các class đang implement nó:
+
+```csharp
+// C# 8.0+ — KHÔNG áp dụng cho C++
+interface ILogger {
+    void Log(string message);
+
+    // Default implementation — class implement không cần override cái này
+    void LogError(string message) => Log($"[ERROR] {message}");
+    void LogInfo(string message) => Log($"[INFO] {message}");
+}
+```
+
+Trong C++, không có cơ chế này. Tuy nhiên, bạn có thể đạt kết quả tương tự bằng cách dùng **abstract class** thay vì interface thuần:
+
+```cpp
+// C++ equivalent — dùng abstract class có default implementation
+class ILogger {
+public:
+    virtual void log(const std::string& message) = 0;  // phải override
+
+    // Cung cấp default implementation (non-pure virtual)
+    virtual void logError(const std::string& msg) {
+        log("[ERROR] " + msg);
+    }
+
+    virtual void logInfo(const std::string& msg) {
+        log("[INFO] " + msg);
+    }
+
+    virtual ~ILogger() {}
+};
+```
+
+<Callout type="note">
+Trong C++, "interface" chỉ là quy ước đặt tên, không phải từ khóa. Khi muốn mô phỏng interface thuần (như Java/C#), hãy tạo abstract class với **chỉ pure virtual functions**, không có data members (ngoại trừ virtual destructor).
+</Callout>

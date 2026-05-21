@@ -23,19 +23,22 @@ A very common interview question: "Explain OOP with a real-world example." Prepa
 
 ## Minimal example
 
-```java
-public class BankAccount {
-    private double balance;
+```cpp
+class BankAccount {
+    std::string owner;  // private by default in C++ class
+    double balance;
 
-    public BankAccount(double initial) { this.balance = initial; }
+public:
+    BankAccount(const std::string& name, double initial)
+        : owner(name), balance(initial) {}
 
-    public void deposit(double amount) {
-        if (amount <= 0) throw new IllegalArgumentException();
-        this.balance += amount;
+    void deposit(double amount) {
+        if (amount <= 0) throw std::invalid_argument("Amount must be positive");
+        balance += amount;
     }
 
-    public double getBalance() { return this.balance; }
-}
+    double getBalance() const { return balance; }
+};
 ```
 
 `balance` is hidden (encapsulation); callers only interact via `deposit` and `getBalance`.

@@ -25,26 +25,52 @@ OOP có **4 trụ cột** mà bạn bắt buộc phải biết:
 
 ## Ví dụ tối giản
 
-```java
-public class BankAccount {
-    private double balance;
+```cpp
+class BankAccount {
+    std::string owner;  // private by default trong C++ class
+    double balance;
 
-    public BankAccount(double initial) {
-        this.balance = initial;
+public:
+    BankAccount(const std::string& name, double initial)
+        : owner(name), balance(initial) {}
+
+    void deposit(double amount) {
+        if (amount <= 0) throw std::invalid_argument("Amount must be positive");
+        balance += amount;
     }
 
-    public void deposit(double amount) {
-        if (amount <= 0) throw new IllegalArgumentException();
-        this.balance += amount;
-    }
-
-    public double getBalance() {
-        return this.balance;
-    }
-}
+    double getBalance() const { return balance; }
+    std::string getOwner() const { return owner; }
+};
 ```
 
-Ở đây `balance` được ẩn (encapsulation), người dùng chỉ tương tác qua `deposit` và `getBalance`.
+`balance` và `owner` được ẩn (encapsulation), người dùng chỉ tương tác qua `deposit` và `getBalance`.
+
+## Class và Object
+
+**Class** là bản thiết kế (blueprint) — chỉ tồn tại trong code, chưa chiếm bộ nhớ runtime.  
+**Object** là thực thể cụ thể được tạo ra từ bản thiết kế, **chiếm bộ nhớ** trong RAM lúc chương trình chạy.
+
+```cpp
+// Class: bản thiết kế
+class Car {
+public:
+    std::string color;
+    int speed = 0;
+    void accelerate(int n) { speed += n; }
+};
+
+// Objects: thực thể thật trong bộ nhớ, độc lập nhau
+Car car1;             // object trên stack
+car1.color = "Red";
+
+Car* car2 = new Car();  // object trên heap — phải delete thủ công
+car2->color = "Blue";
+delete car2;
+
+// Nhiều objects từ 1 class — hoàn toàn độc lập
+Car a, b, c;  // thay đổi a không ảnh hưởng b hay c
+```
 
 ## Vì sao interviewer hay hỏi?
 

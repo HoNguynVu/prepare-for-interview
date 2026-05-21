@@ -1,0 +1,105 @@
+---
+title: "Polymorphism"
+order: 4
+level: "intermediate"
+description: "Compile-time vs runtime polymorphism, overloading, overriding, and early vs late binding."
+tags: ["oop", "polymorphism", "virtual", "overloading", "overriding"]
+---
+
+## Two Types of Polymorphism
+
+| Type | Also called | Resolved at |
+|---|---|---|
+| **Compile-time** | Static / Overloading | Build time (early binding) |
+| **Runtime** | Dynamic / Overriding | Execution time (late binding) |
+
+## Overloading — Same Name, Different Signature
+
+Same class, different parameter types/counts. Compiler picks the right one at **build time**:
+
+```cpp
+class Printer {
+public:
+    void print(int n)               { std::cout << n; }
+    void print(const std::string& s){ std::cout << s; }
+    void print(double d, int prec)  { /* formatted */ }
+};
+```
+
+## Overriding — Child Replaces Parent's Virtual Method
+
+Requires `virtual` on the parent method. Dispatch happens at **runtime** via vtable:
+
+```cpp
+class Shape {
+public:
+    virtual double area() const { return 0; }
+    virtual ~Shape() {}
+};
+
+class Circle : public Shape {
+    double r;
+public:
+    Circle(double r) : r(r) {}
+    double area() const override { return 3.14159 * r * r; }
+};
+
+class Rectangle : public Shape {
+    double w, h;
+public:
+    Rectangle(double w, double h) : w(w), h(h) {}
+    double area() const override { return w * h; }
+};
+
+Shape* shapes[] = { new Circle(5), new Rectangle(3, 4) };
+for (Shape* s : shapes)
+    std::cout << s->area() << "\n";  // 78.5, 12 — runtime dispatch
+```
+
+## Early Binding vs Late Binding
+
+- **Early binding** (non-virtual): the compiler hardcodes which function to call based on the **declared type** of the pointer/reference.
+- **Late binding** (virtual): the correct function is looked up at runtime via the object's **vtable pointer** — based on the *actual* object type.
+
+```cpp
+class Animal {
+public:
+    std::string greet() { return "Animal"; }          // early binding
+    virtual std::string name() { return "Animal"; }    // late binding
+};
+
+class Dog : public Animal {
+public:
+    std::string greet() { return "Dog"; }
+    std::string name() override { return "Dog"; }
+};
+
+Dog dog;
+Animal* ptr = &dog;
+std::cout << ptr->greet();  // "Animal" — compile-time decision (ptr type = Animal*)
+std::cout << ptr->name();   // "Dog"    — runtime decision (actual object = Dog)
+```
+
+<Callout type="note">
+Always declare the destructor `virtual` in a base class. Without it, deleting a derived object through a base pointer only calls the base destructor — the derived part leaks.
+</Callout>
+
+## Can You Override a Non-Virtual Method?
+
+No. Without `virtual`, C++ uses early binding — the child method **hides** the parent's, but there is no polymorphism. Use the `new` keyword in C# to hide explicitly; in C++ there is no such keyword, and hiding a non-virtual method is just a scoping decision.
+
+```cpp
+class Base { public: void show() { std::cout << "Base"; } };
+class Child : public Base { public: void show() { std::cout << "Child"; } };
+
+Child c;
+Base* p = &c;
+p->show();  // "Base" — no virtual, no polymorphism
+```
+
+## Key Points
+
+- **Overloading**: same class, different params → compile-time
+- **Overriding**: base/derived, `virtual` required → runtime
+- `override` keyword (C++11) — use it; catches wrong signatures at compile time
+- Without `virtual`: early binding → no polymorphism, just hiding

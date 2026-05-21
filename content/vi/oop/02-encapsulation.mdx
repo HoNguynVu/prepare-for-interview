@@ -16,40 +16,82 @@ Mục tiêu:
 - Giảm coupling — code bên ngoài không phụ thuộc vào chi tiết cài đặt.
 - Dễ thay đổi cài đặt mà không phá vỡ chỗ khác.
 
-## Access modifiers
+## Access modifiers trong C++
 
-| Modifier | Cùng class | Cùng package | Class con | Bên ngoài |
-|---|---|---|---|---|
-| `private` | ✅ | ❌ | ❌ | ❌ |
-| `protected` | ✅ | ✅ | ✅ | ❌ |
-| `public` | ✅ | ✅ | ✅ | ✅ |
+Trong C++, `class` mặc định là `private`, còn `struct` mặc định là `public`. Không có khái niệm "cùng package" như Java:
+
+| Modifier | Cùng class | Class con (derived) | Bên ngoài |
+|---|---|---|---|
+| `private` | ✅ | ❌ | ❌ |
+| `protected` | ✅ | ✅ | ❌ |
+| `public` | ✅ | ✅ | ✅ |
+
+<Callout type="note">
+C++ không có phạm vi "package" như Java. `protected` trong C++ chỉ cho phép class con truy cập — không mở rộng cho các class cùng thư mục/namespace.
+</Callout>
 
 ## Getter / Setter có cần thiết?
 
 Không phải lúc nào cũng cần. **Hãy chỉ phơi ra hành vi cần thiết**, không phơi nguyên trạng thái.
 
-```java
-// ❌ Phơi quá nhiều
-public class User {
-    public String email;
-}
+```cpp
+// ❌ Phơi quá nhiều — không khác gì struct
+class User {
+public:
+    std::string email;  // ai cũng có thể gán tùy ý, kể cả giá trị vô nghĩa
+};
 
-// ✅ Bảo vệ invariant
-public class User {
-    private String email;
+// ✅ Bảo vệ invariant — validate trong method
+class User {
+    std::string email;  // private
 
-    public void changeEmail(String newEmail) {
-        if (!newEmail.contains("@")) throw new IllegalArgumentException();
-        this.email = newEmail;
+public:
+    User(const std::string& email) { changeEmail(email); }
+
+    void changeEmail(const std::string& newEmail) {
+        if (newEmail.find('@') == std::string::npos)
+            throw std::invalid_argument("Email must contain '@'");
+        this->email = newEmail;
     }
-}
+
+    std::string getEmail() const { return email; }
+};
 ```
 
 <Callout type="warning">
-Auto-generate setter cho mọi field là một anti-pattern. Nó biến class thành **anemic data structure** không khác gì struct.
+Auto-generate setter cho mọi field là một anti-pattern. Nó biến class thành **anemic data structure** — object chỉ chứa data, không có behavior, không khác gì struct C thuần.
 </Callout>
+
+## Ví dụ thực tế: Temperature class
+
+```cpp
+class Temperature {
+    double celsius;  // private — đơn vị chuẩn nội bộ
+
+public:
+    explicit Temperature(double c) : celsius(c) {
+        if (c < -273.15)
+            throw std::out_of_range("Below absolute zero");
+    }
+
+    // Phơi hành vi, không phơi state thô
+    double toCelsius() const { return celsius; }
+    double toFahrenheit() const { return celsius * 9.0 / 5.0 + 32; }
+    double toKelvin() const { return celsius + 273.15; }
+
+    void setCelsius(double c) {
+        if (c < -273.15) throw std::out_of_range("Below absolute zero");
+        celsius = c;
+    }
+};
+
+Temperature t(100.0);
+std::cout << t.toFahrenheit();  // 212 — người dùng không biết bên trong lưu Celsius
+// t.celsius = -999;  ❌ compile error
+```
 
 ## Câu hỏi hay gặp
 
-- *Vì sao không để field là public?* — Mất khả năng kiểm soát invariant, khó refactor.
-- *Encapsulation vs Abstraction khác nhau ở đâu?* — Encapsulation **giấu state**; abstraction **giấu implementation complexity**.
+- *Vì sao không để field là public?* — Mất khả năng kiểm soát invariant, khó refactor sau này khi logic thay đổi.
+- *Encapsulation vs Abstraction khác nhau ở đâu?* — Encapsulation **giấu state** (dữ liệu bên trong); Abstraction **giấu implementation complexity** (cách hoạt động bên trong).
+- *Trong C++, class và struct khác nhau gì về encapsulation?* — Chỉ khác access mặc định: `class` = `private`, `struct` = `public`. Dùng `struct` cho plain data, `class` khi cần encapsulation.

@@ -1,0 +1,82 @@
+---
+title: "Inheritance"
+order: 3
+level: "beginner"
+description: "Reusing and specialising behavior from a parent class, and why composition is often preferred."
+tags: ["oop", "inheritance"]
+---
+
+## What is Inheritance?
+
+**Inheritance** lets a child class acquire properties and methods from a parent class, then extend or override them.
+
+## Is-A vs Has-A
+
+- **Is-A → inherit**: `Dog` *is an* `Animal`
+- **Has-A → compose**: `Car` *has an* `Engine`
+
+If the "is-a" statement isn't clearly true, prefer composition.
+
+## Example
+
+```cpp
+class Animal {
+public:
+    std::string name;
+    Animal(const std::string& n) : name(n) {}
+
+    virtual std::string sound() const { return "..."; }
+    virtual ~Animal() {}
+};
+
+class Dog : public Animal {
+public:
+    Dog(const std::string& n) : Animal(n) {}
+    std::string sound() const override { return "Woof!"; }
+};
+
+// Call parent method from child
+class GoldenRetriever : public Dog {
+public:
+    GoldenRetriever(const std::string& n) : Dog(n) {}
+    std::string sound() const override {
+        return Dog::sound() + " (friendly)";  // base class call: Dog::sound()
+    }
+};
+```
+
+## Multiple Inheritance & Diamond Problem
+
+C++ allows multiple class inheritance; C# and Java do not (interfaces only).
+
+The **Diamond Problem** occurs when two parent classes share a common ancestor:
+
+```cpp
+class A { public: void hello() {} };
+class B : public A {};
+class C : public A {};
+class D : public B, public C {};  // D has two copies of A
+
+D obj;
+obj.hello();  // ❌ Ambiguous — which A::hello?
+```
+
+**Fix with `virtual` inheritance** — ensures only one copy of the base:
+
+```cpp
+class B : virtual public A {};
+class C : virtual public A {};
+class D : public B, public C {};  // ✅ One shared copy of A
+```
+
+<Callout type="note">
+C# and Java solve this by only allowing single class inheritance. Multiple inheritance is allowed only through interfaces.
+</Callout>
+
+## Key Points
+
+- Child inherits all `public`/`protected` members of parent
+- Parent methods must be `virtual` to enable overriding
+- Call parent method: `ParentClass::method()` (C++ equivalent of `base.method()`)
+- Use `virtual` base classes to fix the Diamond Problem in C++
+- Prefer **composition** for flexibility; use inheritance only for clear Is-A relationships

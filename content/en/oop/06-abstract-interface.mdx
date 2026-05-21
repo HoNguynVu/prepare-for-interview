@@ -1,0 +1,83 @@
+---
+title: "Abstract Class & Interface"
+order: 6
+level: "intermediate"
+description: "Abstract classes vs interfaces: definitions, differences, and when to use each."
+tags: ["oop", "abstract", "interface", "abstraction"]
+---
+
+## Abstract Class
+
+An **abstract class** is an incomplete class that defines shared behavior but forces subclasses to implement at least one method via **pure virtual functions** (`= 0`).
+
+```cpp
+class Shape {
+protected:
+    double x, y;
+
+public:
+    Shape(double x, double y) : x(x), y(y) {}
+
+    virtual double area() const = 0;   // pure virtual — subclass MUST implement
+    void move(double dx, double dy) { x += dx; y += dy; }  // concrete method
+
+    virtual ~Shape() {}
+};
+
+class Circle : public Shape {
+    double r;
+public:
+    Circle(double x, double y, double r) : Shape(x, y), r(r) {}
+    double area() const override { return 3.14159 * r * r; }
+};
+```
+
+A class with **at least one** pure virtual function is abstract — cannot be instantiated directly.
+
+## Interface (C++ simulation)
+
+C++ has no `interface` keyword. An interface is modelled as an abstract class with **only pure virtual functions** and no data members:
+
+```cpp
+class ISerializable {
+public:
+    virtual std::string serialize() const = 0;
+    virtual void deserialize(const std::string& data) = 0;
+    virtual ~ISerializable() {}
+};
+
+// Multiple "interface" inheritance
+class Order : public ISerializable {
+public:
+    std::string serialize() const override { return "{}"; }
+    void deserialize(const std::string& data) override { /* parse */ }
+};
+```
+
+## Comparison
+
+| | Abstract Class | Interface |
+|---|---|---|
+| Relationship | Is-A | Can-Do |
+| State (fields) | Yes | No |
+| Concrete methods | Yes | No (C++), optional in C# 8+ |
+| Multiple inheritance | No | Yes |
+| Use when | Shared code, related classes | Loose coupling, unrelated classes |
+
+## Cannot Instantiate Either
+
+```cpp
+Shape s;          // ❌ compile error: abstract type
+ISerializable i;  // ❌ compile error: abstract type
+Circle c(0,0,5);  // ✅ concrete class — ok
+Shape* p = new Circle(0,0,5);  // ✅ base pointer to derived — ok
+```
+
+## When to Use Each
+
+- **Abstract class**: subclasses share code/state (e.g. `BaseEntity` with `id`, `createdAt`)
+- **Interface**: define a contract for unrelated classes; enables Dependency Injection (e.g. `IRepository`)
+
+<Callout type="tip">
+In C# 8.0+, interfaces can have default method implementations — useful for adding new methods to an existing interface without breaking classes that already implement it.
+</Callout>
