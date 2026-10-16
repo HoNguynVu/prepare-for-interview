@@ -1,0 +1,931 @@
+{
+  "schema_version": "1.0",
+  "course": {
+    "id": "network-interview",
+    "title": "Network cho phỏng vấn Backend",
+    "description": "Kiến thức mạng máy tính cần cho phỏng vấn Backend Intern / Junior Developer, gắn với thực tế ASP.NET Core và Azure.",
+    "planned_chapters": [
+      { "order": 1, "id": "network-01", "title": "Mô hình OSI và TCP/IP" },
+      { "order": 2, "id": "network-02", "title": "IP, Subnet, NAT và Port" },
+      { "order": 3, "id": "network-03", "title": "TCP và UDP" },
+      { "order": 4, "id": "network-04", "title": "DNS" },
+      { "order": 5, "id": "network-05", "title": "HTTP" },
+      { "order": 6, "id": "network-06", "title": "HTTPS và TLS" },
+      { "order": 7, "id": "network-07", "title": "Gõ URL và nhấn Enter thì chuyện gì xảy ra" },
+      { "order": 8, "id": "network-08", "title": "REST, WebSocket, SSE, gRPC" },
+      { "order": 9, "id": "network-09", "title": "Cookie, Session, JWT, CORS, OAuth2/OIDC" },
+      { "order": 10, "id": "network-10", "title": "Load Balancer, Reverse Proxy, CDN, Caching" }
+    ]
+  },
+  "chapter": {
+    "id": "network-01",
+    "order": 1,
+    "slug": "osi-tcp-ip",
+    "title": "Mô hình OSI và TCP/IP",
+    "subtitle": "Nền móng của mọi câu hỏi network: chuyện này xảy ra ở tầng nào?",
+    "level": "beginner-intermediate",
+    "estimated_study_minutes": 90,
+    "learning_objectives": [
+      "Giải thích được vì sao mạng được chia thành các tầng.",
+      "Nêu được nhiệm vụ, đơn vị dữ liệu, giao thức và thiết bị của từng tầng OSI.",
+      "Ánh xạ được 7 tầng OSI sang 4 tầng TCP/IP.",
+      "Mô tả được quá trình đóng gói (encapsulation) và bóc gói (decapsulation) với một request thực tế.",
+      "Biết thông tin nào đổi và thông tin nào giữ nguyên khi gói tin đi qua mạng.",
+      "Dùng mô hình phân tầng để khoanh vùng và debug lỗi kết nối."
+    ],
+    "sections": [
+      {
+        "id": "s1-why-layers",
+        "order": 1,
+        "title": "Vì sao phải chia mạng thành các tầng?",
+        "type": "theory",
+        "content_md": "Hãy tưởng tượng em gửi một món quà từ TP.HCM ra Hà Nội. Em chỉ cần viết thiệp và gói quà; em không cần biết bưu điện xếp hàng lên xe nào, xe chạy đường nào. Mỗi bên chỉ lo phần việc của mình và giao tiếp với bên kế tiếp qua một giao diện rõ ràng: gói hàng có ghi địa chỉ.\n\nMạng máy tính cũng vậy. Mỗi tầng đảm nhận một nhiệm vụ và chỉ nói chuyện với tầng ngay trên và ngay dưới nó. Điều này giống nguyên tắc tách Controller, Service, Repository khi viết backend.",
+        "key_points": [
+          "**Tách biệt trách nhiệm:** code ASP.NET gửi HTTP response mà không cần biết dữ liệu đi qua cáp quang hay Wi-Fi.",
+          "**Thay thế độc lập:** đổi Wi-Fi sang 5G không phải sửa ứng dụng; đổi HTTP/1.1 sang HTTP/2 thì router không cần biết.",
+          "**Debug theo tầng:** khoanh vùng sự cố lần lượt: dây có cắm không, có IP chưa, port có mở không, ứng dụng có trả lỗi không."
+        ],
+        "analogy": "Gửi bưu phẩm: người gửi chỉ lo nội dung và địa chỉ, bưu điện lo vận chuyển.",
+        "question_ids": ["q-net01-001", "q-net01-030", "q-net01-027"]
+      },
+      {
+        "id": "s2-layer-7",
+        "order": 2,
+        "title": "Tầng 7: Application (Ứng dụng)",
+        "type": "layer",
+        "layer": {
+          "osi_number": 7,
+          "osi_name": "Application",
+          "vi_name": "Ứng dụng",
+          "tcpip_layer": "Application",
+          "pdu": "Data / Message",
+          "addressing": "URL, hostname, header",
+          "protocols": ["HTTP", "HTTPS", "DNS", "SMTP", "IMAP", "FTP", "SSH", "WebSocket"],
+          "devices": ["Load balancer L7", "Reverse proxy", "WAF", "API Gateway"]
+        },
+        "content_md": "Tầng 7 cung cấp **giao thức** để ứng dụng giao tiếp qua mạng. Lưu ý: tầng này **không phải** bản thân ứng dụng (Chrome, app của em) mà là giao thức ứng dụng dùng.",
+        "examples": [
+          "Admin bấm 'Gửi thông báo', frontend tạo request `POST /api/messages` với header `Authorization`, `Content-Type: application/json` và body JSON. Toàn bộ request đó là dữ liệu tầng 7."
+        ],
+        "common_errors": [
+          "Sai endpoint (404)",
+          "Thiếu hoặc hết hạn token (401)",
+          "Không đủ quyền (403)",
+          "Body sai định dạng (400)",
+          "Exception trong code server (500)"
+        ],
+        "backend_relevance": "Phần lớn lỗi backend developer xử lý hằng ngày nằm ở tầng này.",
+        "question_ids": ["q-net01-002"]
+      },
+      {
+        "id": "s3-layer-6",
+        "order": 3,
+        "title": "Tầng 6: Presentation (Trình bày)",
+        "type": "layer",
+        "layer": {
+          "osi_number": 6,
+          "osi_name": "Presentation",
+          "vi_name": "Trình bày",
+          "tcpip_layer": "Application",
+          "pdu": "Data",
+          "addressing": "Không có",
+          "protocols": ["TLS (tranh luận)", "UTF-8", "JSON", "XML", "gzip"],
+          "devices": []
+        },
+        "content_md": "Đảm bảo dữ liệu bên gửi tạo ra thì bên nhận **hiểu được**. Gồm ba việc: định dạng và chuyển đổi dữ liệu (encoding), mã hóa và giải mã, nén và giải nén.",
+        "examples": [
+          "Tiêu đề 'Khuyến mãi' phải mã hóa UTF-8 đúng, nếu không bên nhận thấy ký tự lỗi kiểu 'Khuyáº¿n'.",
+          "Server trả `Content-Encoding: gzip` để nén dữ liệu."
+        ],
+        "common_errors": [
+          "Lỗi font tiếng Việt do sai charset",
+          "Lỗi deserialize JSON, ví dụ client gửi ngày `15/10/2026` trong khi server chờ ISO `2026-10-15`"
+        ],
+        "question_ids": ["q-net01-003"]
+      },
+      {
+        "id": "s4-layer-5",
+        "order": 4,
+        "title": "Tầng 5: Session (Phiên)",
+        "type": "layer",
+        "layer": {
+          "osi_number": 5,
+          "osi_name": "Session",
+          "vi_name": "Phiên",
+          "tcpip_layer": "Application",
+          "pdu": "Data",
+          "addressing": "Không có",
+          "protocols": ["Gộp vào tầng Application trong thực tế"],
+          "devices": []
+        },
+        "content_md": "Thiết lập, duy trì và kết thúc phiên giao tiếp giữa hai bên, kể cả đồng bộ và khôi phục khi bị ngắt.\n\n**Dễ nhầm:** session đăng nhập web (session ID trong cookie, `HttpContext.Session`) là khái niệm của **ứng dụng**, thuộc tầng 7, không phải tầng 5 OSI.",
+        "examples": [
+          "Kết nối WebSocket giữ mở suốt thời gian admin dùng dashboard.",
+          "Cuộc gọi video duy trì phiên và kết nối lại khi mạng chập chờn."
+        ],
+        "common_errors": [],
+        "question_ids": ["q-net01-004"]
+      },
+      {
+        "id": "s5-layer-4",
+        "order": 5,
+        "title": "Tầng 4: Transport (Giao vận)",
+        "type": "layer",
+        "layer": {
+          "osi_number": 4,
+          "osi_name": "Transport",
+          "vi_name": "Giao vận",
+          "tcpip_layer": "Transport",
+          "pdu": "Segment (TCP) / Datagram (UDP)",
+          "addressing": "Port",
+          "protocols": ["TCP", "UDP", "QUIC (chạy trên UDP)"],
+          "devices": ["Load balancer L4", "Firewall (IP + port)"]
+        },
+        "content_md": "Đưa dữ liệu đến **đúng ứng dụng** trên máy đích nhờ **port**; tùy giao thức thì đảm bảo độ tin cậy.\n\n**Ý then chốt:** tầng 3 đưa gói tin tới đúng **máy**, tầng 4 đưa tới đúng **chương trình**. Một server có thể chạy API (443), SQL Server (1433), Redis (6379) cùng lúc; số port giúp hệ điều hành chuyển dữ liệu đúng chỗ.\n\nMột kết nối TCP được xác định duy nhất bởi **bộ năm**: IP nguồn, port nguồn, IP đích, port đích, giao thức.",
+        "examples": [
+          "Request của admin có port đích 443, port nguồn là ephemeral port do hệ điều hành chọn, ví dụ 52341."
+        ],
+        "common_errors": [
+          "`Connection refused`: máy có nhưng không tiến trình nào lắng nghe port đó",
+          "`Connection timed out`: thường do firewall chặn hoặc sai IP",
+          "Socket exhaustion khi tạo `new HttpClient()` cho mỗi request (nên dùng `IHttpClientFactory`)"
+        ],
+        "question_ids": ["q-net01-005", "q-net01-006", "q-net01-034", "q-net01-035", "q-net01-028", "q-net01-029"]
+      },
+      {
+        "id": "s6-layer-3",
+        "order": 6,
+        "title": "Tầng 3: Network (Mạng)",
+        "type": "layer",
+        "layer": {
+          "osi_number": 3,
+          "osi_name": "Network",
+          "vi_name": "Mạng",
+          "tcpip_layer": "Internet",
+          "pdu": "Packet",
+          "addressing": "Địa chỉ IP",
+          "protocols": ["IPv4", "IPv6", "ICMP", "IPsec"],
+          "devices": ["Router", "Firewall tầng 3"]
+        },
+        "content_md": "Định địa chỉ logic (**IP**) và **định tuyến**: chọn đường đi cho gói tin qua nhiều mạng khác nhau.\n\n**TTL (Time To Live)** trong IP header giảm 1 sau mỗi router; về 0 thì gói bị hủy, tránh gói tin chạy vòng mãi khi định tuyến lỗi. TTL này khác TTL của DNS.",
+        "examples": [
+          "Gói tin từ laptop ở TP.HCM tới server Azure ở Singapore đi qua hàng chục router; mỗi router đọc IP đích để chọn chặng kế tiếp. Lệnh `tracert` / `traceroute` hiển thị từng chặng."
+        ],
+        "common_errors": [
+          "Sai IP",
+          "Không có route tới mạng đích",
+          "Ping thất bại (nhưng có thể chỉ do ICMP bị chặn)"
+        ],
+        "question_ids": ["q-net01-007", "q-net01-036", "q-net01-022", "q-net01-023", "q-net01-037"]
+      },
+      {
+        "id": "s7-layer-2",
+        "order": 7,
+        "title": "Tầng 2: Data Link (Liên kết dữ liệu)",
+        "type": "layer",
+        "layer": {
+          "osi_number": 2,
+          "osi_name": "Data Link",
+          "vi_name": "Liên kết dữ liệu",
+          "tcpip_layer": "Link",
+          "pdu": "Frame",
+          "addressing": "Địa chỉ MAC",
+          "protocols": ["Ethernet", "Wi-Fi (802.11)", "ARP", "VLAN (802.1Q)"],
+          "devices": ["Switch", "Bridge", "Access point"]
+        },
+        "content_md": "Truyền dữ liệu giữa hai thiết bị **trong cùng một mạng cục bộ** bằng địa chỉ **MAC**, có kiểm tra lỗi khung tin (FCS).\n\n**Ý quan trọng nhất:** MAC **đổi ở mỗi chặng**, còn IP đích **giữ nguyên** từ đầu đến cuối (IP nguồn đổi khi qua NAT). Như bưu phẩm: địa chỉ người nhận cuối trên thùng không đổi, nhưng mỗi chặng xe tải chỉ chở tới trạm kế tiếp.",
+        "examples": [
+          "Laptop dùng **ARP** hỏi 'Ai giữ IP 192.168.1.1?' để lấy MAC của router nhà, rồi đóng frame gửi tới MAC đó."
+        ],
+        "common_errors": [
+          "Xung đột IP trong mạng LAN",
+          "Cáp lỗi gây nhiều frame hỏng (FCS sai)"
+        ],
+        "question_ids": ["q-net01-008", "q-net01-009", "q-net01-021", "q-net01-040"]
+      },
+      {
+        "id": "s8-layer-1",
+        "order": 8,
+        "title": "Tầng 1: Physical (Vật lý)",
+        "type": "layer",
+        "layer": {
+          "osi_number": 1,
+          "osi_name": "Physical",
+          "vi_name": "Vật lý",
+          "tcpip_layer": "Link",
+          "pdu": "Bit",
+          "addressing": "Không có",
+          "protocols": ["Tín hiệu điện (cáp đồng)", "Ánh sáng (cáp quang)", "Sóng radio (Wi-Fi)"],
+          "devices": ["Cáp", "Hub", "Repeater", "Phần vật lý của card mạng"]
+        },
+        "content_md": "Truyền các **bit** 0 và 1 dưới dạng tín hiệu thật: điện, ánh sáng, sóng radio.",
+        "examples": [
+          "Cáp quang biển bị đứt khiến Internet Việt Nam chậm khi truy cập server nước ngoài. Đây là sự cố tầng 1, không dòng code nào sửa được; vì vậy hệ thống quan trọng thường deploy nhiều region."
+        ],
+        "common_errors": ["Rút cáp", "Sóng Wi-Fi yếu", "Cáp quang đứt"],
+        "question_ids": ["q-net01-010"]
+      },
+      {
+        "id": "s9-tcpip",
+        "order": 9,
+        "title": "Mô hình TCP/IP và tương ứng với OSI",
+        "type": "theory",
+        "content_md": "OSI là mô hình **lý thuyết** để dạy và thống nhất ngôn ngữ. Internet thực tế chạy trên **TCP/IP** gồm 4 tầng:\n\n**Application** (gộp tầng 5, 6, 7): HTTP, DNS, TLS. **Transport** (tầng 4): TCP, UDP. **Internet** (tầng 3): IP, ICMP. **Link / Network Access** (gộp tầng 1, 2): Ethernet, Wi-Fi.\n\nMột số tài liệu dùng mô hình 5 tầng (tách Link thành Data Link và Physical).",
+        "key_points": [
+          "OSI là ngôn ngữ chung của ngành: L4 load balancer, L7 load balancer, DDoS tầng 3/4.",
+          "TCP/IP là mô hình triển khai thực tế."
+        ],
+        "question_ids": ["q-net01-011", "q-net01-024"]
+      },
+      {
+        "id": "s10-encapsulation",
+        "order": 10,
+        "title": "Đóng gói dữ liệu (Encapsulation): ví dụ xuyên suốt",
+        "type": "walkthrough",
+        "content_md": "Khi **gửi**, dữ liệu đi từ trên xuống, mỗi tầng **thêm header** của mình. Khi **nhận**, mỗi tầng **bóc header** của mình, đọc thông tin, rồi đưa phần còn lại lên tầng trên.\n\nTình huống: admin bấm 'Gửi thông báo', frontend gọi `POST https://api.six-app.com/api/messages` (tên miền giả định).",
+        "diagram_ref": "encapsulation",
+        "walkthrough": {
+          "send_steps": [
+            { "layer": "Tầng 7", "action_md": "Trình duyệt tạo HTTP request: `POST /api/messages HTTP/1.1`, header `Host`, `Authorization: Bearer <token>`, `Content-Type: application/json`, body JSON. Trước đó DNS đã phân giải tên miền ra IP, ví dụ `20.40.1.5`." },
+            { "layer": "Tầng 6 / TLS", "action_md": "Toàn bộ request được mã hóa. Router trên đường đi không đọc được token hay nội dung." },
+            { "layer": "Tầng 4", "action_md": "Thêm **TCP header**: port nguồn `52341`, port đích `443`, sequence number, checksum. Dữ liệu lớn được chia thành nhiều segment." },
+            { "layer": "Tầng 3", "action_md": "Thêm **IP header**: IP nguồn `192.168.1.20` (private), IP đích `20.40.1.5`, TTL `64`." },
+            { "layer": "Tầng 2", "action_md": "Dùng ARP tìm MAC của router nhà. Thêm **Ethernet/Wi-Fi header** (MAC nguồn là laptop, MAC đích là router) và **FCS** ở cuối." },
+            { "layer": "Tầng 1", "action_md": "Chuyển frame thành sóng Wi-Fi." }
+          ],
+          "in_transit_md": "Router nhà bóc tầng 2, đọc IP đích ở tầng 3, thực hiện **NAT** (đổi IP nguồn private thành IP public), đóng frame **mới** với MAC mới. Mỗi router sau lặp lại: bóc tầng 2, đọc tầng 3, giảm TTL, đóng tầng 2 mới. Router không cần nhìn lên tầng 4 hay 7.",
+          "receive_steps": [
+            { "layer": "Tầng 1", "action_md": "Card mạng nhận tín hiệu." },
+            { "layer": "Tầng 2", "action_md": "Kiểm tra FCS và MAC đích." },
+            { "layer": "Tầng 3", "action_md": "Xác nhận IP đích là của mình." },
+            { "layer": "Tầng 4", "action_md": "Thấy port 443, chuyển cho tiến trình đang lắng nghe (Kestrel hoặc load balancer)." },
+            { "layer": "TLS", "action_md": "Giải mã dữ liệu." },
+            { "layer": "Tầng 7", "action_md": "ASP.NET đọc HTTP request, routing tới controller. Lúc này code của em mới chạy." }
+          ],
+          "what_changes": [
+            { "field": "MAC nguồn / đích", "behavior": "Đổi ở mỗi chặng" },
+            { "field": "TTL", "behavior": "Giảm 1 sau mỗi router" },
+            { "field": "IP nguồn", "behavior": "Đổi khi qua NAT" },
+            { "field": "IP đích", "behavior": "Giữ nguyên (trừ khi qua proxy / load balancer tạo kết nối mới)" },
+            { "field": "Port đích", "behavior": "Giữ nguyên (trừ proxy / load balancer)" },
+            { "field": "Dữ liệu tầng 7", "behavior": "Giữ nguyên" }
+          ]
+        },
+        "question_ids": ["q-net01-012", "q-net01-013", "q-net01-025", "q-net01-031"]
+      },
+      {
+        "id": "s11-devices-cloud",
+        "order": 11,
+        "title": "Thiết bị và dịch vụ theo tầng (gắn với Azure)",
+        "type": "theory",
+        "content_md": "**Network Security Group (NSG)** lọc theo IP và port: firewall tầng 3–4, không đọc được URL.\n\n**Azure Load Balancer** là load balancer **tầng 4**: chia tải theo IP và port, nhanh nhưng không hiểu HTTP.\n\n**Azure Application Gateway, Azure Front Door** là **tầng 7**: route theo URL path hoặc hostname, xử lý TLS, có thể bật **WAF** để chặn SQL Injection, XSS.",
+        "question_ids": ["q-net01-014", "q-net01-015", "q-net01-016", "q-net01-026", "q-net01-038", "q-net01-039"]
+      },
+      {
+        "id": "s12-debug",
+        "order": 12,
+        "title": "Debug theo tầng: tình huống thực tế",
+        "type": "practice",
+        "content_md": "Nguyên tắc: đọc thông báo lỗi để đoán **tầng** gây lỗi, rồi loại trừ từng tầng (từ dưới lên, hoặc từ trên xuống nếu đã có thông tin lỗi).",
+        "error_to_layer_map": [
+          { "symptom": "Có HTTP status code (400, 401, 500...)", "layer": "Tầng 7", "meaning": "Các tầng dưới đã thông; xem log ứng dụng và request." },
+          { "symptom": "ERR_NAME_NOT_RESOLVED", "layer": "DNS (tầng 7)", "meaning": "Không phân giải được tên miền." },
+          { "symptom": "ERR_CONNECTION_REFUSED", "layer": "Tầng 4", "meaning": "Gói tin tới máy đích nhưng không tiến trình nào nghe port đó." },
+          { "symptom": "ERR_CONNECTION_TIMED_OUT", "layer": "Tầng 3–4", "meaning": "Không phản hồi; nghi firewall hoặc sai IP." },
+          { "symptom": "ERR_CERT_DATE_INVALID", "layer": "TLS", "meaning": "Certificate hết hạn." }
+        ],
+        "question_ids": ["q-net01-017", "q-net01-018", "q-net01-019", "q-net01-020", "q-net01-032", "q-net01-033"]
+      }
+    ],
+    "summary_table": {
+      "columns": ["Tầng", "Tên", "Đơn vị dữ liệu", "Địa chỉ / thông tin chính", "Giao thức", "Thiết bị"],
+      "rows": [
+        ["7", "Application", "Data / Message", "URL, header", "HTTP, DNS, SMTP, SSH", "L7 load balancer, WAF"],
+        ["6", "Presentation", "Data", "Encoding", "(TLS*), JSON, UTF-8, gzip", ""],
+        ["5", "Session", "Data", "Phiên", "(gộp vào tầng 7 thực tế)", ""],
+        ["4", "Transport", "Segment / Datagram", "Port", "TCP, UDP", "L4 load balancer, firewall"],
+        ["3", "Network", "Packet", "IP", "IP, ICMP", "Router"],
+        ["2", "Data Link", "Frame", "MAC", "Ethernet, Wi-Fi, ARP", "Switch"],
+        ["1", "Physical", "Bit", "", "Cáp, sóng", "Hub, cáp"]
+      ],
+      "footnote": "*Vị trí của TLS còn tranh luận: chức năng gần tầng 6, vị trí thực tế nằm giữa TCP và HTTP."
+    },
+    "mnemonics": [
+      {
+        "purpose": "7 tầng OSI từ dưới lên (1 → 7)",
+        "text": "Please Do Not Throw Sausage Pizza Away",
+        "mapping": "Physical, Data Link, Network, Transport, Session, Presentation, Application"
+      },
+      {
+        "purpose": "Đơn vị dữ liệu từ tầng 4 xuống tầng 1",
+        "text": "Some People Fear Birthdays",
+        "mapping": "Segment, Packet, Frame, Bit"
+      }
+    ],
+    "header_sizes": [
+      { "header": "Ethernet header", "size": "14 byte (+ 4 byte FCS ở cuối)" },
+      { "header": "IPv4 header", "size": "Tối thiểu 20 byte" },
+      { "header": "IPv6 header", "size": "40 byte cố định" },
+      { "header": "TCP header", "size": "Tối thiểu 20 byte" },
+      { "header": "UDP header", "size": "8 byte" }
+    ],
+    "diagrams": {
+      "encapsulation": {
+        "description": "Đóng gói qua 4 tầng TCP/IP. Mỗi hàng là một tầng, các khối xếp từ trái sang phải.",
+        "rows": [
+          { "layer": "Application", "pdu": "Message", "blocks": [{ "label": "HTTP request", "role": "data" }] },
+          { "layer": "Transport", "pdu": "Segment", "blocks": [{ "label": "TCP hdr", "role": "header" }, { "label": "HTTP request", "role": "data" }] },
+          { "layer": "Network", "pdu": "Packet", "blocks": [{ "label": "IP hdr", "role": "header" }, { "label": "TCP hdr", "role": "header" }, { "label": "HTTP request", "role": "data" }] },
+          { "layer": "Link", "pdu": "Frame", "blocks": [{ "label": "Eth hdr", "role": "header" }, { "label": "IP hdr", "role": "header" }, { "label": "TCP hdr", "role": "header" }, { "label": "HTTP request", "role": "data" }, { "label": "FCS", "role": "header" }] }
+        ],
+        "legend": {
+          "header": "Header của từng tầng",
+          "data": "Dữ liệu ứng dụng giữ nguyên"
+        }
+      }
+    },
+    "questions": [
+      {
+        "id": "q-net01-001",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "easy",
+        "tags": ["osi", "layering"],
+        "question": "Tại sao cần mô hình phân tầng trong mạng?",
+        "answer_short": "Để tách trách nhiệm, thay thế từng tầng độc lập và debug theo từng tầng.",
+        "answer_md": "Ba lý do: (1) **tách biệt trách nhiệm**, mỗi tầng chỉ lo một việc và giao tiếp với tầng kề qua giao diện rõ ràng; (2) **thay thế độc lập**, đổi Wi-Fi sang 5G không cần sửa ứng dụng; (3) **debug theo tầng**, khoanh vùng sự cố từng bước. Có thể so sánh với kiến trúc Controller, Service, Repository trong backend.",
+        "follow_ups": ["Nhược điểm của việc chia tầng là gì? (overhead header, đôi khi tối ưu xuyên tầng khó hơn)"]
+      },
+      {
+        "id": "q-net01-002",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "easy",
+        "tags": ["dns", "layer-7", "layer-4"],
+        "question": "DNS thuộc tầng nào? Nó dùng giao thức tầng dưới nào?",
+        "answer_short": "Tầng 7, chạy trên UDP port 53 (chuyển sang TCP khi phản hồi lớn).",
+        "answer_md": "DNS là giao thức tầng 7 (Application), chạy trên **UDP port 53** ở tầng 4, dùng **TCP** khi phản hồi lớn hoặc khi đồng bộ zone giữa các DNS server. Ý quan trọng: một giao thức tầng 7 luôn dựa vào một giao thức tầng 4 bên dưới.",
+        "follow_ups": ["Tại sao DNS ưu tiên UDP?"]
+      },
+      {
+        "id": "q-net01-003",
+        "source": "lesson",
+        "type": "trick",
+        "difficulty": "medium",
+        "tags": ["tls", "layer-6", "osi"],
+        "question": "TLS thuộc tầng nào trong mô hình OSI?",
+        "answer_short": "Không khớp hẳn một tầng: chức năng gần tầng 6, vị trí nằm giữa TCP và HTTP; trong TCP/IP thuộc Application.",
+        "answer_md": "TLS không khớp hoàn toàn với một tầng OSI nào. Về **chức năng** (mã hóa) nó gần tầng 6; về **vị trí** nó nằm giữa TCP (tầng 4) và HTTP (tầng 7). Trong mô hình TCP/IP, TLS được coi là một phần của tầng Application, chạy trên TCP. Người phỏng vấn hỏi câu này để xem em có hiểu **OSI chỉ là mô hình lý thuyết**.",
+        "follow_ups": ["Vậy HTTPS khác HTTP ở tầng nào?"]
+      },
+      {
+        "id": "q-net01-004",
+        "source": "lesson",
+        "type": "trick",
+        "difficulty": "easy",
+        "tags": ["session", "layer-5", "aspnet"],
+        "question": "Session đăng nhập trong ASP.NET có phải tầng 5 OSI không?",
+        "answer_short": "Không, đó là trạng thái do ứng dụng quản lý, thuộc tầng 7.",
+        "answer_md": "Không. Session đăng nhập (session ID trong cookie, `HttpContext.Session`) là trạng thái do **ứng dụng** quản lý, thuộc tầng 7. Trên thực tế tầng 5 và 6 không tồn tại như tầng riêng; chức năng của chúng gộp vào tầng Application của TCP/IP.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net01-005",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "medium",
+        "tags": ["port", "layer-4", "tcp"],
+        "question": "Một web server chỉ có một port 443, sao phục vụ được hàng nghìn client cùng lúc?",
+        "answer_short": "Vì kết nối được xác định bởi bộ năm (IP nguồn, port nguồn, IP đích, port đích, giao thức), không chỉ port đích.",
+        "answer_md": "Một kết nối TCP được xác định bởi **bộ năm**: IP nguồn, port nguồn, IP đích, port đích, giao thức. Mỗi client có IP nguồn và port nguồn khác nhau, nên hàng nghìn kết nối cùng tới port 443 vẫn phân biệt được.",
+        "follow_ups": [
+          "Ephemeral port là gì?",
+          "Giới hạn thực tế về số kết nối của một server nằm ở đâu? (file descriptor, RAM, CPU)"
+        ]
+      },
+      {
+        "id": "q-net01-006",
+        "source": "lesson",
+        "type": "scenario",
+        "difficulty": "medium",
+        "tags": ["debug", "layer-4", "firewall"],
+        "question": "`Connection refused` và `Connection timed out` khác nhau thế nào?",
+        "answer_short": "Refused: gói tin tới máy đích nhưng không ai nghe port. Timed out: không có phản hồi, thường do firewall hoặc sai IP.",
+        "answer_md": "**Refused**: gói tin **đã tới** máy đích, máy trả gói RST báo không có tiến trình nghe port đó, nên kiểm tra app có chạy và bind đúng port không. **Timed out**: **không nhận được phản hồi**, thường do firewall / security group âm thầm drop gói tin, hoặc sai IP; nên kiểm tra cấu hình mạng.",
+        "follow_ups": ["Em dùng lệnh gì để kiểm tra port có mở không? (`Test-NetConnection host -Port 443`, `curl -v`, `nc -vz`)"]
+      },
+      {
+        "id": "q-net01-007",
+        "source": "lesson",
+        "type": "trick",
+        "difficulty": "medium",
+        "tags": ["ping", "icmp", "layer-3"],
+        "question": "`ping` hoạt động ở tầng nào? Ping không được thì có chắc server chết không?",
+        "answer_short": "ICMP, tầng 3. Không chắc, vì nhiều server và cloud chặn ICMP.",
+        "answer_md": "Ping dùng **ICMP**, tầng 3. Ping thất bại không có nghĩa server chết vì nhiều server và cloud (kể cả Azure mặc định) chặn ICMP. Ngược lại, ping được cũng không chứng minh web chạy, vì ping không kiểm tra tầng 4 và 7. Để kiểm tra web, dùng `curl` hoặc `Test-NetConnection host -Port 443`.",
+        "follow_ups": ["traceroute hoạt động dựa trên cơ chế nào? (TTL tăng dần và thông báo ICMP Time Exceeded)"]
+      },
+      {
+        "id": "q-net01-008",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "easy",
+        "tags": ["mac", "ip", "layer-2", "layer-3"],
+        "question": "Đã có IP rồi, sao còn cần MAC?",
+        "answer_short": "IP là địa chỉ logic để định tuyến tới đích cuối; MAC là địa chỉ phần cứng để giao tới thiết bị kế tiếp trong mạng cục bộ.",
+        "answer_md": "IP là địa chỉ **logic** để định tuyến xuyên mạng, cho biết gói tin cần tới đâu cuối cùng. MAC là địa chỉ **phần cứng** để giao tận tay thiết bị kế tiếp trong mạng cục bộ. Router dùng IP để chọn chặng tiếp theo, rồi dùng MAC để chuyển frame tới thiết bị ở chặng đó.",
+        "follow_ups": ["Làm sao máy biết MAC của router? (ARP)"]
+      },
+      {
+        "id": "q-net01-009",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "easy",
+        "tags": ["switch", "router", "devices"],
+        "question": "Switch khác Router thế nào?",
+        "answer_short": "Switch tầng 2 chuyển frame trong một LAN theo MAC; Router tầng 3 chuyển packet giữa các mạng theo IP.",
+        "answer_md": "**Switch** (tầng 2) chuyển frame **trong cùng một LAN** dựa trên MAC. **Router** (tầng 3) chuyển packet **giữa các mạng khác nhau** dựa trên IP. Ví dụ: các máy trong văn phòng nối nhau qua switch; văn phòng nối ra Internet qua router.",
+        "follow_ups": ["Switch tầng 3 là gì?"]
+      },
+      {
+        "id": "q-net01-010",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "easy",
+        "tags": ["hub", "switch", "layer-1"],
+        "question": "Hub khác switch thế nào?",
+        "answer_short": "Hub (tầng 1) phát ra mọi cổng; switch (tầng 2) học MAC và chỉ gửi đúng cổng.",
+        "answer_md": "Hub không hiểu địa chỉ, nhận gì phát ra **tất cả** cổng, gây xung đột và lãng phí băng thông. Switch học được MAC nào ở cổng nào nên chỉ gửi frame tới **đúng** cổng cần. Hub ngày nay gần như không còn dùng.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net01-011",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "easy",
+        "tags": ["osi", "tcp-ip"],
+        "question": "Nếu thực tế dùng TCP/IP, sao vẫn phải học OSI?",
+        "answer_short": "OSI là ngôn ngữ chung của ngành và tách chi tiết hơn, hữu ích khi phân tích, debug.",
+        "answer_md": "OSI là **ngôn ngữ chung**: khi kỹ sư nói 'load balancer L7', 'lỗi tầng 2', 'DDoS tầng 3/4', họ dùng số tầng OSI. OSI cũng tách chi tiết hơn nên hữu ích khi phân tích và debug từng bước.",
+        "follow_ups": ["Ánh xạ 7 tầng OSI sang 4 tầng TCP/IP."]
+      },
+      {
+        "id": "q-net01-012",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "medium",
+        "tags": ["encapsulation", "nat", "mac", "ttl"],
+        "question": "Khi gói tin đi qua mạng, thông tin nào thay đổi, thông tin nào giữ nguyên?",
+        "answer_short": "MAC đổi mỗi chặng, TTL giảm, IP nguồn đổi khi qua NAT; IP đích, port đích và dữ liệu tầng 7 giữ nguyên.",
+        "answer_md": "MAC nguồn và đích **đổi ở mỗi chặng**. TTL **giảm** sau mỗi router. IP nguồn **đổi khi qua NAT**. IP đích, port đích và dữ liệu tầng 7 **giữ nguyên**, trừ khi đi qua proxy hoặc load balancer, vốn tự mở kết nối mới tới server phía sau.",
+        "follow_ups": ["Vậy server sau load balancer biết IP thật của client bằng cách nào?"]
+      },
+      {
+        "id": "q-net01-013",
+        "source": "lesson",
+        "type": "scenario",
+        "difficulty": "medium",
+        "tags": ["load-balancer", "x-forwarded-for", "aspnet"],
+        "question": "Server đặt sau load balancer làm sao biết IP thật của client?",
+        "answer_short": "Qua header X-Forwarded-For do load balancer L7 thêm vào; ASP.NET Core đọc bằng UseForwardedHeaders, chỉ tin proxy đáng tin.",
+        "answer_md": "Vì load balancer tạo kết nối mới, IP nguồn server thấy là IP của load balancer. Load balancer L7 thêm header **`X-Forwarded-For`** chứa IP gốc. Trong ASP.NET Core, cấu hình middleware `UseForwardedHeaders` và **chỉ tin header khi nó đến từ proxy tin cậy** (KnownProxies / KnownNetworks), vì client có thể tự giả mạo header.",
+        "follow_ups": ["Còn header X-Forwarded-Proto dùng để làm gì?"]
+      },
+      {
+        "id": "q-net01-014",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "medium",
+        "tags": ["load-balancer", "layer-4", "layer-7"],
+        "question": "Load balancer Layer 4 khác Layer 7 thế nào?",
+        "answer_short": "L4 chia tải theo IP và port, nhanh nhưng không hiểu nội dung; L7 đọc HTTP nên route được theo URL, header, cookie.",
+        "answer_md": "**L4** chỉ nhìn IP và port, nhanh nhưng không hiểu nội dung. **L7** đọc được HTTP (URL, header, cookie) nên có thể route `/api` sang server A và `/images` sang server B, terminate TLS, bật WAF; đổi lại tốn tài nguyên hơn. Trên Azure: Azure Load Balancer là L4; Application Gateway, Front Door là L7.",
+        "follow_ups": ["Khi nào em chọn L4 thay vì L7?"]
+      },
+      {
+        "id": "q-net01-015",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "medium",
+        "tags": ["firewall", "waf", "security"],
+        "question": "Firewall thông thường và WAF khác nhau thế nào?",
+        "answer_short": "Firewall tầng 3–4 lọc theo IP, port; WAF tầng 7 đọc nội dung request để chặn tấn công ứng dụng.",
+        "answer_md": "Firewall thông thường (như NSG) hoạt động ở tầng 3–4, cho phép hay chặn theo IP, port, giao thức; nó không phân biệt được request hợp lệ với request chứa `' OR 1=1--`. **WAF** ở tầng 7 đọc URL, header, body nên phát hiện SQL Injection, XSS. Hai lớp bổ sung cho nhau.",
+        "follow_ups": ["Có WAF rồi thì backend còn cần validate input không? (Có, WAF chỉ là lớp phòng thủ thêm)"]
+      },
+      {
+        "id": "q-net01-016",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "hard",
+        "tags": ["ddos", "security", "layer-3", "layer-4", "layer-7"],
+        "question": "Tấn công DDoS có những loại nào xét theo tầng?",
+        "answer_short": "Tầng 3/4: làm ngập băng thông hoặc cạn kết nối (SYN flood). Tầng 7: request HTTP trông hợp lệ nhắm endpoint nặng.",
+        "answer_md": "**Tầng 3/4** làm ngập băng thông hoặc cạn tài nguyên kết nối, ví dụ **SYN flood** gửi hàng loạt SYN không hoàn tất bắt tay. **Tầng 7** gửi số lượng lớn request HTTP trông hợp lệ vào endpoint nặng (ví dụ API tìm kiếm), khó phát hiện vì giống người dùng thật; chống bằng rate limiting, WAF, CDN.",
+        "follow_ups": ["Em sẽ làm rate limiting trong ASP.NET Core thế nào?"]
+      },
+      {
+        "id": "q-net01-017",
+        "source": "lesson",
+        "type": "scenario",
+        "difficulty": "medium",
+        "tags": ["debug", "frontend", "api"],
+        "question": "Frontend gọi API báo lỗi. Em khoanh vùng lỗi thế nào?",
+        "answer_short": "Đọc loại lỗi để biết tầng: có status code là tầng 7; NAME_NOT_RESOLVED là DNS; REFUSED là tầng 4; TIMED_OUT nghi firewall; CERT lỗi là TLS.",
+        "answer_md": "Nhìn **loại lỗi** để biết tầng. Có HTTP status code: các tầng dưới đã thông, xem log ứng dụng. `ERR_NAME_NOT_RESOLVED`: DNS. `ERR_CONNECTION_REFUSED`: tầng 4, server chưa chạy hoặc sai port. `ERR_CONNECTION_TIMED_OUT`: nghi firewall hoặc sai IP. `ERR_CERT_DATE_INVALID`: certificate hết hạn.",
+        "follow_ups": ["Nếu lỗi là CORS thì sao? (sẽ học ở Chương 9)"]
+      },
+      {
+        "id": "q-net01-018",
+        "source": "lesson",
+        "type": "scenario",
+        "difficulty": "medium",
+        "tags": ["docker", "bind", "layer-4", "aspnet"],
+        "question": "App chạy trong Docker, từ máy host gọi `localhost:5000` không được. Vì sao?",
+        "answer_short": "App trong container bind 127.0.0.1 nên chỉ nhận kết nối nội bộ container; cần bind 0.0.0.0 và map port.",
+        "answer_md": "App có thể đang bind `127.0.0.1` bên trong container, chỉ nhận kết nối từ chính container. Sửa: cho app bind `0.0.0.0` (ASP.NET: `ASPNETCORE_URLS=http://0.0.0.0:5000`) và map port bằng `-p 5000:5000`.",
+        "follow_ups": ["`localhost`, `127.0.0.1` và `0.0.0.0` khác nhau thế nào?"]
+      },
+      {
+        "id": "q-net01-019",
+        "source": "lesson",
+        "type": "scenario",
+        "difficulty": "medium",
+        "tags": ["azure", "database", "firewall", "timeout"],
+        "question": "API chạy local bình thường, deploy lên Azure thì gọi database bị timeout. Em kiểm tra gì?",
+        "answer_short": "Lỗi tầng 3–4: firewall database đã cho phép IP outbound của App Service chưa, cấu hình VNet / định tuyến có đúng không.",
+        "answer_md": "Timeout gợi ý tầng 3–4. Kiểm tra **firewall của database** đã cho phép IP outbound của App Service chưa; nếu dùng mạng riêng (VNet, private endpoint) thì kiểm tra định tuyến, DNS riêng. Gần như không bao giờ là lỗi code.",
+        "follow_ups": ["Connection string đúng nhưng vẫn timeout thì sao?"]
+      },
+      {
+        "id": "q-net01-020",
+        "source": "lesson",
+        "type": "scenario",
+        "difficulty": "medium",
+        "tags": ["latency", "cdn", "traceroute"],
+        "question": "Người dùng ở một số nơi tải trang rất chậm, nơi khác bình thường. Em xử lý thế nào?",
+        "answer_short": "Nghi tầng 1–3 (khoảng cách, đường truyền, định tuyến); dùng traceroute xem chậm ở chặng nào, cân nhắc CDN.",
+        "answer_md": "Có thể do tầng 1–3: khoảng cách địa lý, đường truyền quốc tế, định tuyến kém. Dùng `traceroute` để xem chậm ở chặng nào; cân nhắc **CDN** đưa nội dung tĩnh lại gần người dùng hoặc deploy thêm region.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net01-021",
+        "source": "lesson",
+        "type": "trick",
+        "difficulty": "medium",
+        "tags": ["arp", "layer-2", "layer-3"],
+        "question": "ARP thuộc tầng 2 hay tầng 3?",
+        "answer_short": "Cầu nối giữa hai tầng: dùng IP để tìm MAC, gói ARP đi trong frame tầng 2 không có IP header; thường xếp tầng 2.",
+        "answer_md": "ARP làm **cầu nối**: dùng IP (tầng 3) để tìm MAC (tầng 2), và gói ARP gửi trực tiếp trong frame tầng 2 mà không có IP header. Đa số tài liệu xếp vào tầng 2, có tài liệu gọi là 'tầng 2.5'. Nên nêu rõ vai trò thay vì chỉ đọc một con số.",
+        "follow_ups": ["ARP spoofing là gì?"]
+      },
+      {
+        "id": "q-net01-022",
+        "source": "lesson",
+        "type": "trick",
+        "difficulty": "easy",
+        "tags": ["router", "https", "privacy"],
+        "question": "Gói tin qua router có bị router đọc nội dung HTTP không?",
+        "answer_short": "Thông thường không: router chỉ đọc tới tầng 3; với HTTPS thì nội dung đã mã hóa. Ngoại lệ: proxy, LB L7, WAF.",
+        "answer_md": "Thông thường không. Router chỉ đọc tới **tầng 3** (IP header) để định tuyến; với HTTPS thì dù muốn cũng không đọc được vì dữ liệu đã mã hóa. Ngoại lệ là proxy, load balancer L7 hay WAF, được thiết kế để đọc tầng 7 (và phải giữ certificate để giải mã).",
+        "follow_ups": ["Với HTTPS, người trên đường truyền vẫn thấy được thông tin gì? (IP đích, port, thường cả tên miền qua SNI)"]
+      },
+      {
+        "id": "q-net01-023",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "hard",
+        "tags": ["mtu", "fragmentation", "mss"],
+        "question": "MTU là gì? Chuyện gì xảy ra khi gói tin lớn hơn MTU?",
+        "answer_short": "Kích thước tối đa một frame mang được (Ethernet thường 1500 byte); gói lớn hơn bị phân mảnh hoặc bị hủy. TCP tránh bằng MSS.",
+        "answer_md": "**MTU** (Maximum Transmission Unit) là kích thước tối đa một frame mang được, Ethernet thường **1500 byte**. Gói lớn hơn bị **phân mảnh** ở tầng 3 hoặc bị hủy nếu có cờ cấm phân mảnh (Don't Fragment). TCP tránh vấn đề này bằng cách thỏa thuận **MSS** (Maximum Segment Size) khi bắt tay. Với intern, nắm khái niệm là đủ.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net01-024",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "hard",
+        "tags": ["http3", "quic", "udp"],
+        "question": "HTTP/3 dùng UDP. Vậy độ tin cậy của nó nằm ở đâu?",
+        "answer_short": "Ở giao thức QUIC: tự xây cơ chế gửi lại, thứ tự ngay trên UDP và tích hợp TLS 1.3.",
+        "answer_md": "HTTP/3 chạy trên **QUIC**; QUIC tự xây lại cơ chế tin cậy (gửi lại gói, kiểm soát thứ tự theo từng stream) ngay trên UDP và tích hợp sẵn TLS 1.3. Đây là ví dụ cho thấy ranh giới các tầng trong thực tế không cứng nhắc như mô hình.",
+        "follow_ups": ["Vì sao không sửa TCP mà phải làm QUIC? (TCP nằm trong kernel và thiết bị mạng, khó thay đổi)"]
+      },
+      {
+        "id": "q-net01-025",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "easy",
+        "tags": ["layering", "abstraction"],
+        "question": "Một giao thức tầng trên có cần biết tầng dưới hoạt động thế nào không?",
+        "answer_short": "Không cần; đó chính là điểm mạnh của phân tầng.",
+        "answer_md": "Không cần. HTTP chỉ cần một kênh truyền tin cậy để gửi byte; nó không quan tâm bên dưới là TCP chạy trên Wi-Fi hay cáp quang. Đây là điểm mạnh của phân tầng (abstraction).",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net01-026",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "easy",
+        "tags": ["azure", "nsg", "devices"],
+        "question": "Network Security Group (NSG) của Azure hoạt động ở tầng nào? Nó có chặn được theo URL không?",
+        "answer_short": "Tầng 3–4 (IP, port, giao thức); không chặn được theo URL, cần Application Gateway / WAF.",
+        "answer_md": "NSG lọc theo IP, port, giao thức nên là firewall **tầng 3–4**. Nó không đọc được URL; muốn lọc theo path hay nội dung phải dùng dịch vụ tầng 7 như Application Gateway với WAF hoặc Front Door.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net01-027",
+        "source": "extra",
+        "type": "concept",
+        "difficulty": "easy",
+        "tags": ["osi", "communication"],
+        "question": "Hãy giải thích mô hình OSI cho một người không học IT.",
+        "answer_short": "Dùng phép so sánh gửi bưu phẩm: nội dung, đóng gói, ghi địa chỉ, vận chuyển từng chặng, giao tận tay.",
+        "answer_md": "Gợi ý trả lời bằng phép so sánh bưu điện: em viết thư (tầng 7, nội dung), dịch sang ngôn ngữ người nhận đọc được (tầng 6), thống nhất cuộc trao đổi (tầng 5), ghi rõ gửi cho người nào trong tòa nhà (tầng 4, port), ghi địa chỉ thành phố, đường (tầng 3, IP), mỗi xe tải chở từ trạm này sang trạm kế (tầng 2, MAC), và con đường, phương tiện thật (tầng 1). Câu này kiểm tra khả năng **giao tiếp kỹ thuật**, nên ngắn gọn và tự tin.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net01-028",
+        "source": "extra",
+        "type": "concept",
+        "difficulty": "medium",
+        "tags": ["socket", "layer-4", "os"],
+        "question": "Socket là gì? Nó nằm ở đâu trong mô hình phân tầng?",
+        "answer_short": "Socket là giao diện do hệ điều hành cung cấp để ứng dụng dùng tầng Transport; mỗi socket gắn với IP + port.",
+        "answer_md": "**Socket** là điểm cuối giao tiếp, là API do **hệ điều hành** cung cấp để ứng dụng (tầng 7) sử dụng tầng Transport (TCP/UDP). Một socket gắn với một cặp IP + port; một kết nối TCP là một cặp socket ở hai đầu. Khi Kestrel 'listen on port 5000', nó mở một listening socket; mỗi client kết nối vào tạo một socket mới. Trong .NET, `HttpClient` và Kestrel đều dùng `System.Net.Sockets` bên dưới.",
+        "follow_ups": ["Server 'listen' trên một port nghĩa là gì ở mức hệ điều hành?"]
+      },
+      {
+        "id": "q-net01-029",
+        "source": "extra",
+        "type": "concept",
+        "difficulty": "easy",
+        "tags": ["port", "well-known-ports"],
+        "question": "Kể một số port phổ biến. Port được chia thành những dải nào?",
+        "answer_short": "0–1023 well-known (80, 443, 22, 53...), 1024–49151 registered (1433, 3306, 5432, 6379), 49152–65535 ephemeral.",
+        "answer_md": "Port là số 16 bit (0–65535). **0–1023 well-known**: 80 HTTP, 443 HTTPS, 22 SSH, 53 DNS, 25 SMTP. **1024–49151 registered**: 1433 SQL Server, 3306 MySQL, 5432 PostgreSQL, 6379 Redis. **49152–65535 dynamic / ephemeral**: hệ điều hành cấp cho phía client khi mở kết nối (dải thực tế tùy hệ điều hành).",
+        "follow_ups": ["Tại sao không nên mở port database ra Internet?"]
+      },
+      {
+        "id": "q-net01-030",
+        "source": "extra",
+        "type": "concept",
+        "difficulty": "medium",
+        "tags": ["layering", "overhead"],
+        "question": "Nhược điểm của mô hình phân tầng là gì?",
+        "answer_short": "Overhead do mỗi tầng thêm header và xử lý riêng; khó tối ưu xuyên tầng; ranh giới thực tế không rõ ràng.",
+        "answer_md": "Mỗi tầng thêm **header** (Ethernet 14 + 4 byte, IPv4 ≥ 20, TCP ≥ 20) nên tốn băng thông, nhất là với gói nhỏ. Xử lý qua nhiều tầng tốn thời gian. Đôi khi muốn tối ưu phải phá ranh giới tầng (ví dụ QUIC gộp transport và TLS). Trả lời được cả ưu và nhược cho thấy em hiểu đánh đổi.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net01-031",
+        "source": "extra",
+        "type": "scenario",
+        "difficulty": "medium",
+        "tags": ["httpclient", "dotnet", "encapsulation"],
+        "question": "Khi code C# gọi `await httpClient.GetAsync(\"https://api.example.com/users\")`, chuyện gì xảy ra ở từng tầng?",
+        "answer_short": "HttpClient tạo HTTP request (7), phân giải DNS, mở/tái dùng TCP 443 (4), TLS handshake, OS thêm IP header (3), card mạng đóng frame (2), truyền tín hiệu (1).",
+        "answer_md": "**Tầng 7:** `HttpClient` tạo request GET với header; phân giải DNS tên miền ra IP. **Tầng 4:** lấy kết nối từ connection pool hoặc mở kết nối TCP mới tới port 443 (3-way handshake). **TLS:** handshake và mã hóa. **Tầng 3:** hệ điều hành thêm IP header. **Tầng 2–1:** driver và card mạng đóng frame, truyền tín hiệu. Response đi theo chiều ngược lại; `await` trả quyền cho thread trong lúc chờ I/O. Điểm cộng: nhắc tới connection pooling và vì sao nên dùng `IHttpClientFactory`.",
+        "follow_ups": ["Vì sao tạo `new HttpClient()` mỗi request lại gây socket exhaustion?"]
+      },
+      {
+        "id": "q-net01-032",
+        "source": "extra",
+        "type": "scenario",
+        "difficulty": "easy",
+        "tags": ["debug", "tools"],
+        "question": "Kể các công cụ em dùng để debug mạng và mỗi công cụ kiểm tra tầng nào.",
+        "answer_short": "ping, traceroute (tầng 3); nslookup / dig (DNS); Test-NetConnection, nc, netstat / ss (tầng 4); curl -v, DevTools, Postman (tầng 7 + TLS); Wireshark (mọi tầng).",
+        "answer_md": "`ping`, `tracert` / `traceroute`: tầng 3. `nslookup`, `dig`: DNS. `Test-NetConnection host -Port 443`, `nc -vz`, `netstat` / `ss`: tầng 4 (port mở không, kết nối nào ở trạng thái gì). `curl -v`, Chrome DevTools tab Network, Postman: tầng 7 và TLS. **Wireshark**: bắt gói tin, xem mọi tầng.",
+        "follow_ups": ["Em đã từng dùng công cụ nào trong dự án thật?"]
+      },
+      {
+        "id": "q-net01-033",
+        "source": "extra",
+        "type": "behavioral",
+        "difficulty": "medium",
+        "tags": ["behavioral", "star", "debug"],
+        "question": "Kể một lần em gặp và xử lý một vấn đề liên quan đến mạng hoặc kết nối.",
+        "answer_short": "Trả lời theo STAR, nêu rõ em đã khoanh vùng theo tầng thế nào.",
+        "answer_md": "Dùng khung **STAR**: **Situation** (bối cảnh dự án), **Task** (vấn đề cụ thể: timeout, CORS, auth redirect lỗi, app không gọi được DB sau deploy...), **Action** (em khoanh vùng theo tầng: đọc thông báo lỗi, công cụ đã dùng, giả thuyết đã loại trừ, người đã trao đổi), **Result** (kết quả, bài học). Hãy dùng **trải nghiệm thật** của em, ví dụ từ việc migrate authentication hay deploy lên Azure; người phỏng vấn sẽ hỏi sâu nên không nên bịa.",
+        "follow_ups": ["Nếu làm lại, em sẽ làm khác điều gì?"]
+      },
+      {
+        "id": "q-net01-034",
+        "source": "extra",
+        "type": "concept",
+        "difficulty": "easy",
+        "tags": ["localhost", "bind", "loopback"],
+        "question": "`localhost`, `127.0.0.1` và `0.0.0.0` khác nhau thế nào?",
+        "answer_short": "127.0.0.1 (localhost) là loopback, chỉ máy đó gọi được; bind 0.0.0.0 là lắng nghe trên mọi interface.",
+        "answer_md": "`127.0.0.1` là địa chỉ **loopback**; `localhost` là tên trỏ tới nó (có thể cả `::1` với IPv6). Server bind `127.0.0.1` chỉ nhận kết nối từ chính máy. Bind `0.0.0.0` nghĩa là lắng nghe trên **mọi network interface**, nên máy khác cũng truy cập được (nếu firewall cho phép). `0.0.0.0` không phải địa chỉ để client gọi tới.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net01-035",
+        "source": "extra",
+        "type": "concept",
+        "difficulty": "medium",
+        "tags": ["checksum", "error-detection"],
+        "question": "Việc kiểm tra lỗi dữ liệu diễn ra ở những tầng nào?",
+        "answer_short": "Nhiều tầng: Ethernet FCS (CRC) ở tầng 2, checksum header IPv4 ở tầng 3, checksum TCP/UDP ở tầng 4; TCP còn gửi lại gói mất.",
+        "answer_md": "**Tầng 2:** FCS dùng CRC, frame hỏng bị hủy. **Tầng 3:** IPv4 có checksum cho header (IPv6 bỏ đi để router xử lý nhanh hơn). **Tầng 4:** TCP và UDP có checksum; riêng TCP còn dùng sequence number và ACK để **gửi lại** gói bị mất. Phát hiện lỗi (checksum) khác với khôi phục lỗi (gửi lại).",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net01-036",
+        "source": "extra",
+        "type": "concept",
+        "difficulty": "medium",
+        "tags": ["nat", "layer-3", "layer-4"],
+        "question": "NAT hoạt động ở tầng nào?",
+        "answer_short": "Chủ yếu tầng 3 (đổi IP), nhưng NAT phổ biến (PAT) còn đổi cả port ở tầng 4.",
+        "answer_md": "NAT đổi địa chỉ IP nên chủ yếu thuộc **tầng 3**. Tuy nhiên dạng phổ biến nhất ở router gia đình là **PAT / NAT overload**: nhiều máy dùng chung một IP public, router phân biệt bằng cách đổi cả **port nguồn**, tức là can thiệp tầng 4. Đây là ví dụ thiết bị thực tế không gói gọn trong một tầng. (Chi tiết NAT học ở Chương 2.)",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net01-037",
+        "source": "extra",
+        "type": "concept",
+        "difficulty": "medium",
+        "tags": ["vpn", "tunneling"],
+        "question": "VPN hoạt động ở tầng nào?",
+        "answer_short": "Tùy loại: IPsec ở tầng 3; VPN dựa trên TLS (như OpenVPN) đóng gói gói tin bên trong kết nối tầng 4/7.",
+        "answer_md": "Tùy loại. **IPsec** mã hóa và đóng gói ở **tầng 3**. Các VPN dựa trên TLS như OpenVPN tạo một **đường hầm (tunnel)**: gói tin IP gốc được đóng gói bên trong một kết nối khác. Ý chính là **tunneling**: đặt cả một gói tin tầng 3 vào phần dữ liệu của một gói khác, tức encapsulation lồng nhau.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net01-038",
+        "source": "extra",
+        "type": "concept",
+        "difficulty": "easy",
+        "tags": ["cdn", "layer-7"],
+        "question": "CDN hoạt động ở tầng nào và vì sao giúp trang tải nhanh hơn?",
+        "answer_short": "Chủ yếu tầng 7 (cache nội dung HTTP); nhanh hơn vì máy chủ gần người dùng, giảm độ trễ tầng 1–3.",
+        "answer_md": "CDN cache và phục vụ nội dung HTTP nên chủ yếu ở **tầng 7**. Nó nhanh vì đặt máy chủ (edge) **gần người dùng**, tức giải quyết vấn đề khoảng cách vật lý và số chặng định tuyến ở tầng 1–3 bằng một giải pháp tầng 7. Nhiều CDN còn chống DDoS tầng 3/4.",
+        "follow_ups": ["Nội dung nào không nên cache trên CDN?"]
+      },
+      {
+        "id": "q-net01-039",
+        "source": "extra",
+        "type": "scenario",
+        "difficulty": "hard",
+        "tags": ["https", "redirect", "x-forwarded-proto", "aspnet"],
+        "question": "App ASP.NET sau load balancer liên tục redirect vòng lặp về HTTPS. Nguyên nhân có thể là gì?",
+        "answer_short": "LB terminate TLS rồi gọi app bằng HTTP; app tưởng request là HTTP nên redirect mãi. Cần đọc X-Forwarded-Proto qua UseForwardedHeaders.",
+        "answer_md": "Load balancer L7 **terminate TLS** rồi gọi app phía sau bằng **HTTP**. App dùng `UseHttpsRedirection` thấy request là HTTP nên redirect sang HTTPS, request lại qua LB, lại thành HTTP: vòng lặp. Sửa: cấu hình `UseForwardedHeaders` để app đọc **`X-Forwarded-Proto`** và biết request gốc là HTTPS (đặt middleware này trước các middleware khác). Câu này cho thấy em hiểu nơi TLS kết thúc trong kiến trúc nhiều tầng.",
+        "follow_ups": ["TLS termination ở load balancer có ưu, nhược điểm gì?"]
+      },
+      {
+        "id": "q-net01-040",
+        "source": "extra",
+        "type": "concept",
+        "difficulty": "medium",
+        "tags": ["vlan", "layer-2"],
+        "question": "VLAN là gì và thuộc tầng nào?",
+        "answer_short": "Chia một switch vật lý thành nhiều mạng LAN logic tách biệt; tầng 2.",
+        "answer_md": "**VLAN** (Virtual LAN) chia một hạ tầng switch vật lý thành nhiều mạng LAN logic tách biệt, dùng thẻ 802.1Q trong frame, nên thuộc **tầng 2**. Máy ở hai VLAN khác nhau muốn nói chuyện phải đi qua router (tầng 3). Khái niệm tương tự trên cloud là chia subnet trong VNet.",
+        "follow_ups": []
+      }
+    ],
+    "exercises": [
+      {
+        "id": "ex-net01-01",
+        "prompt": "Lỗi `ERR_CONNECTION_REFUSED` cho em biết điều gì về các tầng 1–3?",
+        "answer_md": "Các tầng 1–3 **hoạt động tốt**: gói tin đã tới máy đích và máy đó chủ động trả lời từ chối. Vấn đề nằm ở tầng 4 trở lên (không tiến trình nào lắng nghe port đó)."
+      },
+      {
+        "id": "ex-net01-02",
+        "prompt": "Ghép thiết bị với tầng: Switch, Router, Azure Application Gateway, Network Security Group.",
+        "answer_md": "Switch: tầng 2. Router: tầng 3. Application Gateway: tầng 7. NSG: tầng 3–4."
+      },
+      {
+        "id": "ex-net01-03",
+        "prompt": "Gói tin đi từ laptop tới server qua 10 router. MAC đích đổi khoảng bao nhiêu lần?",
+        "answer_md": "Khoảng 11 lần: mỗi chặng (laptop → router 1, ..., router 10 → server) có một cặp MAC mới. Ý chính: **mỗi chặng một lần**."
+      },
+      {
+        "id": "ex-net01-04",
+        "prompt": "Một request bị chặn vì chứa chuỗi `<script>` trong body. Thiết bị nào làm việc này, ở tầng mấy?",
+        "answer_md": "**WAF**, tầng 7, vì phải đọc nội dung body."
+      },
+      {
+        "id": "ex-net01-05",
+        "prompt": "Sắp xếp quá trình đóng gói khi gửi: Frame, Message, Packet, Segment, Bit.",
+        "answer_md": "Message → Segment → Packet → Frame → Bit."
+      }
+    ],
+    "quiz": [
+      {
+        "id": "qz-net01-01",
+        "prompt": "Router đọc thông tin ở tầng cao nhất nào để định tuyến?",
+        "options": [
+          { "id": "a", "text": "Tầng 2 (MAC)" },
+          { "id": "b", "text": "Tầng 3 (IP)" },
+          { "id": "c", "text": "Tầng 4 (Port)" },
+          { "id": "d", "text": "Tầng 7 (URL)" }
+        ],
+        "correct_option_id": "b",
+        "explanation": "Router định tuyến dựa trên IP đích ở tầng 3."
+      },
+      {
+        "id": "qz-net01-02",
+        "prompt": "Đơn vị dữ liệu ở tầng Transport khi dùng TCP gọi là gì?",
+        "options": [
+          { "id": "a", "text": "Frame" },
+          { "id": "b", "text": "Packet" },
+          { "id": "c", "text": "Segment" },
+          { "id": "d", "text": "Bit" }
+        ],
+        "correct_option_id": "c",
+        "explanation": "TCP: Segment; UDP: Datagram; tầng 3: Packet; tầng 2: Frame."
+      },
+      {
+        "id": "qz-net01-03",
+        "prompt": "Thông tin nào thường thay đổi ở mỗi chặng khi gói tin đi qua mạng?",
+        "options": [
+          { "id": "a", "text": "IP đích" },
+          { "id": "b", "text": "Port đích" },
+          { "id": "c", "text": "Địa chỉ MAC" },
+          { "id": "d", "text": "Dữ liệu HTTP" }
+        ],
+        "correct_option_id": "c",
+        "explanation": "MAC chỉ có ý nghĩa trong một mạng cục bộ nên đổi ở mỗi chặng."
+      },
+      {
+        "id": "qz-net01-04",
+        "prompt": "Ping thất bại nhưng truy cập website qua HTTPS vẫn được. Giải thích hợp lý nhất?",
+        "options": [
+          { "id": "a", "text": "Server đã chết" },
+          { "id": "b", "text": "ICMP bị firewall chặn" },
+          { "id": "c", "text": "DNS sai" },
+          { "id": "d", "text": "Certificate hết hạn" }
+        ],
+        "correct_option_id": "b",
+        "explanation": "Nhiều server và cloud chặn ICMP; ping không phản ánh tình trạng tầng 4 và 7."
+      },
+      {
+        "id": "qz-net01-05",
+        "prompt": "Mô hình TCP/IP gộp tầng 5, 6, 7 của OSI thành tầng nào?",
+        "options": [
+          { "id": "a", "text": "Transport" },
+          { "id": "b", "text": "Internet" },
+          { "id": "c", "text": "Application" },
+          { "id": "d", "text": "Link" }
+        ],
+        "correct_option_id": "c",
+        "explanation": "Session, Presentation, Application của OSI gộp vào tầng Application của TCP/IP."
+      },
+      {
+        "id": "qz-net01-06",
+        "prompt": "Azure Load Balancer (không phải Application Gateway) không thể làm việc nào?",
+        "options": [
+          { "id": "a", "text": "Chia tải theo IP và port" },
+          { "id": "b", "text": "Route /api và /images tới hai backend khác nhau" },
+          { "id": "c", "text": "Health check backend" },
+          { "id": "d", "text": "Chia tải TCP" }
+        ],
+        "correct_option_id": "b",
+        "explanation": "Route theo URL path cần đọc HTTP, là việc của load balancer tầng 7."
+      }
+    ],
+    "key_takeaways": [
+      "Chia tầng để tách trách nhiệm và để debug.",
+      "Tầng 3 đưa tới đúng máy bằng IP; tầng 4 đưa tới đúng chương trình bằng port.",
+      "MAC đổi theo từng chặng; IP đích giữ nguyên (trừ proxy / load balancer).",
+      "Gửi thì thêm header, nhận thì bóc header.",
+      "Đọc thông báo lỗi để đoán tầng gây lỗi trước khi đi sửa."
+    ],
+    "references": [
+      {
+        "title": "What is the OSI Model? – Cloudflare Learning Center",
+        "url": "https://www.cloudflare.com/learning/ddos/glossary/open-systems-interconnection-model-osi/",
+        "type": "article",
+        "note": "Ngắn, dễ hiểu, nên đọc đầu tiên."
+      },
+      {
+        "title": "ByteByteGo (Alex Xu)",
+        "url": "https://bytebytego.com",
+        "type": "video / blog",
+        "note": "Tìm video về OSI Model để ôn nhanh bằng hình."
+      },
+      {
+        "title": "Computer Networking: A Top-Down Approach (Kurose & Ross)",
+        "url": "https://gaia.cs.umass.edu/kurose_ross/",
+        "type": "book",
+        "note": "Chương 1 nếu muốn hiểu sâu."
+      },
+      {
+        "title": "Configure ASP.NET Core to work with proxy servers and load balancers – Microsoft Learn",
+        "url": "https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/proxy-load-balancer",
+        "type": "docs",
+        "note": "Forwarded headers, X-Forwarded-For, X-Forwarded-Proto."
+      }
+    ],
+    "next_chapter": {
+      "id": "network-02",
+      "title": "IP, Subnet, NAT và Port"
+    }
+  }
+}

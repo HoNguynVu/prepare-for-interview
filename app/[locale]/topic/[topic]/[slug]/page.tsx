@@ -4,7 +4,9 @@ import { ChevronRight, ChevronLeft } from "lucide-react";
 import { locales, topics, topicMap, type Locale, type TopicId } from "@/lib/navigation";
 import { getLesson, getLessonSlugs, getAdjacentLessons } from "@/lib/content";
 import { getMessages, t } from "@/lib/i18n";
+import { chapterLabels, chapterToc, makeLabeler } from "@/lib/chapter";
 import { MDXContent } from "@/components/MDXContent";
+import { ChapterView } from "@/components/chapter/ChapterView";
 import { TableOfContents, type TocItem } from "@/components/TableOfContents";
 
 export function generateStaticParams() {
@@ -55,7 +57,8 @@ export default function LessonPage({ params }: { params: { locale: string; topic
   const lesson = getLesson(locale, topicId, params.slug);
   if (!lesson) notFound();
   const { prev, next } = getAdjacentLessons(locale, topicId, params.slug);
-  const toc = extractToc(lesson.content);
+  const labels = lesson.chapter ? chapterLabels(m) : {};
+  const toc = lesson.chapter ? chapterToc(lesson.chapter, makeLabeler(labels)) : extractToc(lesson.content);
 
   return (
     <div className="grid gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr,220px] lg:gap-10 lg:px-10">
@@ -88,9 +91,19 @@ export default function LessonPage({ params }: { params: { locale: string; topic
           )}
         </header>
 
-        <div className="prose-app">
-          <MDXContent source={lesson.content} />
-        </div>
+        {lesson.fallbackLocale && (
+          <p className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+            {t(m, "chapter.viOnly")}
+          </p>
+        )}
+
+        {lesson.chapter ? (
+          <ChapterView chapter={lesson.chapter} labels={labels} />
+        ) : (
+          <div className="prose-app">
+            <MDXContent source={lesson.content} />
+          </div>
+        )}
 
         <nav className="mt-12 grid gap-3 border-t border-zinc-200 pt-6 sm:grid-cols-2 dark:border-zinc-800">
           {prev ? (
