@@ -42,10 +42,21 @@ export interface ChapterWalkthrough {
   what_changes?: { field: string; behavior: string }[];
 }
 
+export interface ChapterTable {
+  columns: string[];
+  rows: string[][];
+}
+
+export interface WorkedExample {
+  title: string;
+  steps_md: string[];
+}
+
 export interface ChapterSection {
   id: string;
   order?: number;
   title: string;
+  /** theory | layer | walkthrough | practice | worked_examples | deep_dive | summary */
   type?: string;
   content_md?: string;
   key_points?: string[];
@@ -57,10 +68,15 @@ export interface ChapterSection {
   diagram_ref?: string;
   walkthrough?: ChapterWalkthrough;
   error_to_layer_map?: { symptom: string; layer: string; meaning: string }[];
+  table?: ChapterTable;
+  comparison_table?: ChapterTable;
+  worked_examples?: WorkedExample[];
   question_ids?: string[];
 }
 
-export interface ChapterDiagram {
+/** Layered header/data blocks (OSI encapsulation). Has no `type` in the data. */
+export interface EncapsulationDiagramData {
+  type?: "encapsulation";
   description?: string;
   rows: {
     layer: string;
@@ -69,6 +85,24 @@ export interface ChapterDiagram {
   }[];
   legend?: Record<string, string>;
 }
+
+export interface FlowchartDiagramData {
+  type: "flowchart";
+  description?: string;
+  nodes: { id: string; label: string; shape?: "decision" | string }[];
+  edges: { from: string; to: string; label?: string }[];
+}
+
+export interface NatTableDiagramData {
+  type: "nat_table";
+  description?: string;
+  inside: { device: string; ip_port: string }[];
+  router: { public_ip: string; nat_table: { inside: string; outside: string }[] };
+  server: string;
+  caption?: string;
+}
+
+export type ChapterDiagram = EncapsulationDiagramData | FlowchartDiagramData | NatTableDiagramData;
 
 export interface Chapter {
   id: string;
@@ -109,6 +143,7 @@ export function chapterSearchText(c: Chapter): string {
   const parts: string[] = [c.subtitle ?? "", ...(c.learning_objectives ?? [])];
   for (const s of c.sections) {
     parts.push(s.title, s.content_md ?? "", ...(s.key_points ?? []));
+    for (const ex of s.worked_examples ?? []) parts.push(ex.title);
   }
   for (const q of c.questions) parts.push(q.question, q.answer_short);
   return parts.join("\n").replace(/[*`]/g, "");

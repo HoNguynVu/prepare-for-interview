@@ -97,6 +97,27 @@
       "scenario": "Scenario",
       "behavioral": "Behavioral"
     },
+    "workedExamples": "Worked examples",
+    "workedExamplesHint": "Try it yourself first, then reveal the steps one by one.",
+    "stepsProgress": "{shown}/{total} steps",
+    "showFirstStep": "Show first step",
+    "showNextStep": "Next step",
+    "showAllSteps": "Show all",
+    "hideSteps": "Hide",
+    "sectionType": {
+      "deep_dive": "Deep dive",
+      "worked_examples": "Practice",
+      "practice": "In practice",
+      "summary": "Summary"
+    },
+    "nat": {
+      "inside": "Private network",
+      "router": "NAT / PAT router",
+      "publicIp": "Public IP",
+      "insideCol": "Inside",
+      "outsideCol": "Outside",
+      "server": "Server"
+    },
     "exercises": "Self-check exercises",
     "showSolution": "Show answer",
     "quiz": "Quiz",

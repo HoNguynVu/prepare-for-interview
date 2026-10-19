@@ -1,0 +1,1654 @@
+{
+  "schema_version": "1.0",
+  "_instructions_for_ai": {
+    "purpose": "Dữ liệu Chương 2 (IP, Subnet, NAT và Port) của khóa ôn phỏng vấn Network cho Backend Intern / Junior (.NET). Chương 1 (network-01) đã được import trước đó với cùng schema; hãy thêm chương này theo đúng cách đã làm với Chương 1.",
+    "how_to_use": [
+      "Dùng lại cấu trúc, model, component đã tạo cho Chương 1. Không tạo lại course; chỉ thêm chapter có id network-02, order 2, và nối next_chapter của Chương 1 sang chương này nếu project có hiển thị điều hướng.",
+      "questions[].id duy nhất toàn khóa (tiền tố q-net02-). sections[].question_ids tham chiếu câu hỏi liên quan; một câu có thể xuất hiện ở nhiều section.",
+      "Các trường _md là Markdown (đoạn văn, **in đậm**, `inline code`, khối code ```, bảng Markdown, heading ###). Render bằng Markdown renderer.",
+      "TRƯỜNG MỚI so với Chương 1 (tất cả là tùy chọn trong section): table {columns, rows} hiển thị dạng bảng; worked_examples [{title, steps_md[]}] hiển thị dạng ví dụ có các bước đánh số (nên cho phép ẩn/hiện từng bước để người học tự làm trước); comparison_table {columns, rows} hiển thị dạng bảng so sánh; diagram_ref trỏ tới khóa trong chapter.diagrams. Nếu component hiện tại chưa hỗ trợ các trường này, hãy thêm component dùng chung để các chương sau tái sử dụng.",
+      "section.type có thêm giá trị: worked_examples, deep_dive, summary (ngoài theory, layer, walkthrough, practice của Chương 1). Section deep_dive là phần giải thích chuyên sâu, nên được làm nổi bật.",
+      "diagrams.routing_decision là flowchart (nodes + edges) mô tả cách máy quyết định gửi trực tiếp hay qua gateway; diagrams.nat_pat mô tả bảng NAT. Vẽ bằng SVG/component sẵn có hoặc Mermaid nếu project hỗ trợ.",
+      "Nội dung tiếng Việt, UTF-8; giữ nguyên dấu khi lưu."
+    ]
+  },
+  "course": {
+    "id": "network-interview",
+    "note": "Đã định nghĩa đầy đủ trong file Chương 1."
+  },
+  "chapter": {
+    "id": "network-02",
+    "order": 2,
+    "slug": "ip-subnet-nat-port",
+    "title": "IP, Subnet, NAT và Port",
+    "subtitle": "Gói tin đi tới đâu: địa chỉ, chia mạng, và cách Internet sống sót khi thiếu IPv4.",
+    "level": "beginner-intermediate",
+    "estimated_study_minutes": 150,
+    "learning_objectives": [
+      "Đọc và chuyển đổi địa chỉ IPv4 sang nhị phân.",
+      "Tính network, broadcast, dải host và số host của một subnet bằng block size và phép AND.",
+      "Giải thích từng bước cách máy quyết định gửi gói tin trực tiếp hay qua default gateway, và vai trò của ARP, routing table, longest prefix match.",
+      "Nhận diện các dải địa chỉ đặc biệt (private, loopback, link-local, CGNAT).",
+      "Giải thích cụ thể ba phương pháp xử lý cạn kiệt IPv4: CIDR/VLSM/gộp route, Private + NAT/PAT, IPv6, kèm ưu nhược điểm.",
+      "Nắm các dải port, port phổ biến, và debug lỗi bind port.",
+      "Áp dụng vào thiết kế VNet trên Azure, Docker, và các tình huống NAT thực tế (webhook, whitelist, SNAT exhaustion)."
+    ],
+    "sections": [
+      {
+        "id": "s1-ip-basics",
+        "order": 1,
+        "title": "Địa chỉ IP là gì?",
+        "type": "theory",
+        "content_md": "**IP address** là địa chỉ logic của thiết bị ở tầng 3. IP cho biết gói tin tới **máy nào**, port cho biết tới **chương trình nào**.\n\n**IPv4** dài **32 bit**, viết thành 4 **octet** (mỗi octet 8 bit, giá trị 0–255), ngăn cách bằng dấu chấm, ví dụ `192.168.1.20`. Bên dưới máy chỉ thấy nhị phân:\n\n```\n192      .168      .1        .20\n11000000  10101000  00000001  00010100\n```\n\nGiá trị các bit trong một octet: `128 64 32 16 8 4 2 1`. Ví dụ 192 = 128 + 64 = `11000000`. **Cần thuộc dãy này** vì toàn bộ phần subnet dựa trên nó.\n\nMỗi địa chỉ IP gồm **phần mạng (network)** và **phần host**, giống 'Đường Nguyễn Huệ, số 25': tên đường là phần mạng, số nhà là phần host. Ranh giới giữa hai phần do **subnet mask** quyết định.",
+        "key_points": [
+          "IPv4: 32 bit, 4 octet, mỗi octet 0–255.",
+          "Tổng số địa chỉ 2^32 ≈ 4,3 tỷ, không đủ cho số thiết bị hiện nay.",
+          "Mỗi IP = phần mạng + phần host."
+        ],
+        "question_ids": [
+          "q-net02-001"
+        ]
+      },
+      {
+        "id": "s2-classful",
+        "order": 2,
+        "title": "Lịch sử: Classful addressing (Lớp A, B, C)",
+        "type": "theory",
+        "content_md": "Ngày xưa IP chia theo **lớp cố định**: lớp A (`1–126.x.x.x`, /8, hơn 16 triệu host mỗi mạng), lớp B (`128–191`, /16, khoảng 65 nghìn host), lớp C (`192–223`, /24, 254 host).\n\nVấn đề: công ty cần 300 địa chỉ thì lớp C (254) không đủ, phải nhận cả lớp B 65.536 địa chỉ, **lãng phí hơn 99%**. Năm 1993 hệ thống lớp bị thay bằng **CIDR**. Hiện nay các lớp chỉ còn ý nghĩa lịch sử.",
+        "question_ids": [
+          "q-net02-002"
+        ]
+      },
+      {
+        "id": "s3-subnet-cidr",
+        "order": 3,
+        "title": "Subnet mask và CIDR",
+        "type": "theory",
+        "content_md": "**Subnet mask** là dãy 32 bit: bit **1** đánh dấu phần mạng, bit **0** đánh dấu phần host; các bit 1 luôn liền nhau bên trái.\n\n**Ký hiệu CIDR** chỉ ghi **số bit 1**: `/24` = `11111111.11111111.11111111.00000000` = `255.255.255.0`.\n\n**Công thức quan trọng nhất:**\n- Số địa chỉ = **2^(32 − n)**\n- Số host dùng được = **2^(32 − n) − 2**, trừ **network address** (bit host toàn 0, đại diện cả mạng) và **broadcast address** (bit host toàn 1, gửi tới mọi máy).\n\nQuy luật: **tăng /n thêm 1 thì mạng nhỏ đi một nửa** (/24 = 256, /25 = 128, /26 = 64).",
+        "table": {
+          "columns": [
+            "CIDR",
+            "Subnet mask",
+            "Tổng địa chỉ",
+            "Host dùng được",
+            "Ghi chú"
+          ],
+          "rows": [
+            [
+              "/8",
+              "255.0.0.0",
+              "16.777.216",
+              "16.777.214",
+              "Rất lớn"
+            ],
+            [
+              "/16",
+              "255.255.0.0",
+              "65.536",
+              "65.534",
+              "Hay dùng cho một VNet"
+            ],
+            [
+              "/20",
+              "255.255.240.0",
+              "4.096",
+              "4.094",
+              ""
+            ],
+            [
+              "/24",
+              "255.255.255.0",
+              "256",
+              "254",
+              "Phổ biến nhất"
+            ],
+            [
+              "/25",
+              "255.255.255.128",
+              "128",
+              "126",
+              ""
+            ],
+            [
+              "/26",
+              "255.255.255.192",
+              "64",
+              "62",
+              ""
+            ],
+            [
+              "/27",
+              "255.255.255.224",
+              "32",
+              "30",
+              ""
+            ],
+            [
+              "/28",
+              "255.255.255.240",
+              "16",
+              "14",
+              ""
+            ],
+            [
+              "/30",
+              "255.255.255.252",
+              "4",
+              "2",
+              "Kết nối điểm–điểm"
+            ],
+            [
+              "/32",
+              "255.255.255.255",
+              "1",
+              "1 máy",
+              "Rule firewall"
+            ],
+            [
+              "/0",
+              "0.0.0.0",
+              "Toàn bộ",
+              "",
+              "Mọi địa chỉ"
+            ]
+          ]
+        },
+        "question_ids": [
+          "q-net02-017",
+          "q-net02-018"
+        ]
+      },
+      {
+        "id": "s4-block-size",
+        "order": 4,
+        "title": "Tính subnet nhanh bằng block size và phép AND",
+        "type": "worked_examples",
+        "content_md": "**Mẹo block size (tính trong 30 giây):**\n1. Tìm **octet thú vị**: octet mà mask không phải 255 hay 0.\n2. **Block size = 256 − giá trị mask ở octet đó.**\n3. Mạng con bắt đầu tại các **bội số của block size**: 0, block, 2×block...\n4. IP rơi vào khối nào thì **đầu khối là network**, **(đầu khối kế tiếp − 1) là broadcast**.\n\n**Phép AND:** máy thực sự tính **IP AND mask** theo từng bit (1 AND 1 = 1, còn lại = 0) để ra địa chỉ mạng. Mẹo block size cho cùng kết quả.",
+        "worked_examples": [
+          {
+            "title": "Ví dụ A: 192.168.10.75/24",
+            "steps_md": [
+              "Mask `255.255.255.0`: ba octet đầu cố định, octet cuối là host.",
+              "Network `192.168.10.0`, broadcast `192.168.10.255`.",
+              "Host dùng được `192.168.10.1` – `192.168.10.254` (254 host)."
+            ]
+          },
+          {
+            "title": "Ví dụ B: 10.0.5.130/26",
+            "steps_md": [
+              "/26 → mask `255.255.255.192`, octet thú vị là octet 4.",
+              "Block size = 256 − 192 = **64**; các khối 0, 64, 128, 192.",
+              "130 thuộc khối **128–191**.",
+              "Network `10.0.5.128`, broadcast `10.0.5.191`, host `.129` – `.190` (62 host).",
+              "Kiểm tra bằng AND: `130 = 10000010`, `192 = 11000000`, AND = `10000000` = 128."
+            ]
+          },
+          {
+            "title": "Ví dụ C: 172.16.20.10/20 (octet thú vị không phải octet cuối)",
+            "steps_md": [
+              "/20 = 8 + 8 + 4 → octet 3 có 4 bit 1 = 128+64+32+16 = **240**; mask `255.255.240.0`.",
+              "Block size ở octet 3 = 256 − 240 = **16**; khối 0, 16, 32...",
+              "Octet 3 của IP là 20 → khối **16–31**.",
+              "Network `172.16.16.0`, broadcast `172.16.31.255`.",
+              "Host `172.16.16.1` – `172.16.31.254` (2^12 − 2 = 4.094 host)."
+            ]
+          }
+        ],
+        "question_ids": [
+          "q-net02-003",
+          "q-net02-004",
+          "q-net02-005",
+          "q-net02-016"
+        ]
+      },
+      {
+        "id": "s5-local-vs-remote",
+        "order": 5,
+        "title": "Gửi trong mạng hay ra ngoài mạng: máy kiểm tra bằng subnet mask như thế nào",
+        "type": "deep_dive",
+        "content_md": "Đây là cơ chế cốt lõi giải thích **vì sao cần subnet mask**. Mỗi khi gửi một gói tin, hệ điều hành phải trả lời: **IP đích có nằm cùng mạng với mình không?** Câu trả lời quyết định gói tin được gửi **thẳng tới máy đích** hay **gửi cho router (default gateway)**.\n\n### Bước 0: Máy cần biết những gì\nMỗi máy có 4 thông tin cấu hình, thường được **DHCP** cấp tự động:\n- **IP của mình**, ví dụ `192.168.1.20`\n- **Subnet mask**, ví dụ `/24` (`255.255.255.0`)\n- **Default gateway**, ví dụ `192.168.1.1` (router)\n- **DNS server**\n\nXem bằng `ipconfig` (Windows) hoặc `ip addr` + `ip route` (Linux).\n\n### Bước 1: Tính địa chỉ mạng của chính mình\n`IP mình AND mask mình`. Ví dụ `192.168.1.20 AND 255.255.255.0 = 192.168.1.0`.\n\n### Bước 2: Tính địa chỉ mạng của IP đích, **dùng mask của chính mình**\n`IP đích AND mask mình`. Máy **không biết** mask của bên kia; nó chỉ hỏi: 'nếu áp ranh giới mạng của tôi lên địa chỉ này, nó có thuộc mạng tôi không?'\n\n### Bước 3: So sánh hai kết quả\n- **Bằng nhau → cùng mạng (on-link):** gửi **trực tiếp**. Dùng **ARP** hỏi 'Ai giữ IP đích?' để lấy MAC **của máy đích**, rồi đóng frame gửi thẳng tới MAC đó.\n- **Khác nhau → khác mạng:** gửi cho **default gateway**. Dùng ARP hỏi MAC **của gateway**, đóng frame với **MAC đích = MAC gateway** nhưng **IP đích vẫn là IP của máy cuối cùng**. Router nhận, bóc tầng 2, đọc IP đích và chuyển tiếp.\n\n### Bước 4: Thực tế hệ điều hành dùng bảng định tuyến (routing table)\nBa bước trên là phiên bản đơn giản. Thực tế OS có **routing table**, mỗi dòng gồm: mạng đích, mask (prefix), gateway (next hop), interface. Ví dụ (rút gọn từ `ip route` / `route print`):\n\n```\nĐích            Prefix   Gateway         Ghi chú\n0.0.0.0         /0       192.168.1.1     default route\n192.168.1.0     /24      on-link         mạng cục bộ\n```\n\nVới mỗi gói tin, OS làm phép AND của IP đích với từng prefix, tìm các dòng khớp và chọn dòng có **prefix dài nhất (longest prefix match)**. Route `/0` khớp với mọi địa chỉ nhưng có prefix ngắn nhất, nên chỉ được dùng khi không dòng nào cụ thể hơn khớp; đó chính là 'gửi cho gateway'. **Router trên Internet cũng làm đúng việc này** ở mỗi chặng.\n\n### Vì sao cơ chế này quan trọng\n- Giải thích vì sao **cấu hình sai mask** gây lỗi khó hiểu.\n- Giải thích vì sao **thiếu default gateway** thì vẫn nói chuyện được với máy cùng mạng nhưng không ra Internet.\n- Là nền tảng của **phân chia subnet bảo mật** trên cloud: muốn đi giữa hai subnet buộc phải qua thiết bị định tuyến, nơi có thể đặt rule chặn.",
+        "worked_examples": [
+          {
+            "title": "Ví dụ 1: Cùng mạng: 192.168.1.20/24 gửi tới 192.168.1.50",
+            "steps_md": [
+              "Mạng của mình: `192.168.1.20 AND 255.255.255.0 = 192.168.1.0`.",
+              "Mạng của đích: `192.168.1.50 AND 255.255.255.0 = 192.168.1.0`.",
+              "Bằng nhau → **gửi trực tiếp**.",
+              "ARP broadcast: 'Ai giữ 192.168.1.50?' → máy đó trả lời MAC của nó (kết quả được lưu trong **ARP cache**, xem bằng `arp -a`).",
+              "Frame: MAC đích = MAC của `192.168.1.50`, IP đích = `192.168.1.50`. Không đi qua router."
+            ]
+          },
+          {
+            "title": "Ví dụ 2: Khác mạng: 192.168.1.20/24 gửi tới server 20.40.1.5",
+            "steps_md": [
+              "Mạng của mình: `192.168.1.0`.",
+              "Mạng của đích (dùng mask /24 của mình): `20.40.1.5 AND 255.255.255.0 = 20.40.1.0`.",
+              "Khác nhau → **gửi cho default gateway** `192.168.1.1`.",
+              "ARP: 'Ai giữ 192.168.1.1?' → lấy MAC của router.",
+              "Frame: **MAC đích = MAC router**, nhưng **IP đích = 20.40.1.5** (không đổi).",
+              "Router nhận frame, đọc IP đích, tra bảng định tuyến của nó và chuyển tiếp; qua NAT thì IP nguồn được đổi thành IP public."
+            ]
+          },
+          {
+            "title": "Ví dụ 3 (bẫy): 192.168.1.100/26 gửi tới 192.168.1.130",
+            "steps_md": [
+              "Mask /26 = `255.255.255.192`. Chỉ cần xét octet 4.",
+              "Mình: `100 = 01100100`, AND `11000000` = `01000000` = **64** → mạng `192.168.1.64`.",
+              "Đích: `130 = 10000010`, AND `11000000` = `10000000` = **128** → mạng `192.168.1.128`.",
+              "Khác nhau → phải **gửi qua gateway**, dù ba octet đầu giống hệt.",
+              "Đối chiếu với block size: khối 64–127 và khối 128–191."
+            ]
+          },
+          {
+            "title": "Ví dụ 4: Longest prefix match trên một router",
+            "steps_md": [
+              "Bảng định tuyến: `10.0.0.0/8 → A`, `10.1.0.0/16 → B`, `0.0.0.0/0 → C`.",
+              "Đích `10.1.5.5`: khớp /8 và /16 → chọn **/16 (B)** vì dài hơn.",
+              "Đích `10.2.0.1`: chỉ khớp /8 (và /0) → **A**.",
+              "Đích `8.8.8.8`: chỉ khớp /0 → **C** (default route)."
+            ]
+          },
+          {
+            "title": "Ví dụ 5: Cấu hình sai mask",
+            "steps_md": [
+              "Mạng thật là `192.168.1.0/24`, router là `192.168.1.1`. Máy X bị cấu hình nhầm `192.168.1.20/16`.",
+              "X gửi tới `192.168.5.10` (một máy ở mạng khác, phải qua router): X tính `192.168.5.10 AND 255.255.0.0 = 192.168.0.0`, bằng mạng của mình → X **tưởng là cùng mạng**.",
+              "X gửi ARP 'Ai giữ 192.168.5.10?' trong LAN, **không ai trả lời** (máy đó ở mạng khác) → kết nối thất bại, dù router vẫn hoạt động bình thường.",
+              "Trường hợp ngược lại (mask hẹp hơn thực tế, ví dụ /25) thì một số máy cùng LAN bị coi là khác mạng → gói đi vòng qua router, có thể chậm hoặc bị chặn.",
+              "Bài học: khi 'gọi được máy này mà không gọi được máy kia' trong cùng nơi, hãy kiểm tra mask."
+            ]
+          }
+        ],
+        "diagram_ref": "routing_decision",
+        "question_ids": [
+          "q-net02-030",
+          "q-net02-031",
+          "q-net02-032",
+          "q-net02-033",
+          "q-net02-034",
+          "q-net02-035",
+          "q-net02-003",
+          "q-net02-020"
+        ]
+      },
+      {
+        "id": "s6-special-addresses",
+        "order": 6,
+        "title": "Các địa chỉ đặc biệt",
+        "type": "theory",
+        "content_md": "**Private address (RFC 1918)** chỉ dùng trong mạng nội bộ, **không được định tuyến trên Internet**:\n- `10.0.0.0/8` (10.0.0.0 – 10.255.255.255)\n- `172.16.0.0/12` (172.16.0.0 – **172.31**.255.255)\n- `192.168.0.0/16`\n\nĐịa chỉ đặc biệt khác:\n- **`127.0.0.0/8` (loopback)**, thường dùng `127.0.0.1`: chính máy mình.\n- **`0.0.0.0`**: server bind vào nghĩa là nghe mọi interface; `0.0.0.0/0` trong route hay rule firewall nghĩa là **mọi địa chỉ**.\n- **`169.254.0.0/16` (link-local / APIPA)**: máy tự gán khi **không xin được IP từ DHCP**. Thấy dải này là có lỗi.\n- **`255.255.255.255`**: broadcast toàn mạng cục bộ.\n- **`100.64.0.0/10` (CGNAT)**: nhà mạng dùng cho lớp NAT thứ hai.",
+        "table": {
+          "columns": [
+            "Dải",
+            "Loại",
+            "Ý nghĩa"
+          ],
+          "rows": [
+            [
+              "10.0.0.0/8",
+              "Private",
+              "16.777.216 địa chỉ"
+            ],
+            [
+              "172.16.0.0/12",
+              "Private",
+              "1.048.576 địa chỉ"
+            ],
+            [
+              "192.168.0.0/16",
+              "Private",
+              "65.536 địa chỉ"
+            ],
+            [
+              "127.0.0.0/8",
+              "Loopback",
+              "Chính máy mình"
+            ],
+            [
+              "169.254.0.0/16",
+              "Link-local",
+              "DHCP thất bại"
+            ],
+            [
+              "100.64.0.0/10",
+              "Shared (CGNAT)",
+              "NAT của nhà mạng"
+            ],
+            [
+              "0.0.0.0/0",
+              "Default route",
+              "Mọi địa chỉ"
+            ]
+          ]
+        },
+        "question_ids": [
+          "q-net02-006",
+          "q-net02-007",
+          "q-net02-008",
+          "q-net02-019"
+        ]
+      },
+      {
+        "id": "s7-exhaustion-problem",
+        "order": 7,
+        "title": "Vấn đề cạn kiệt IPv4",
+        "type": "theory",
+        "content_md": "IPv4 có **2^32 = 4.294.967.296** địa chỉ. Trừ các dải dành riêng (private, loopback, multicast `224.0.0.0/4`, dải dự phòng `240.0.0.0/4`...), số địa chỉ public dùng được chỉ còn khoảng **3,7 tỷ**. Trong khi đó số thiết bị kết nối Internet (điện thoại, laptop, máy chủ, thiết bị IoT) đã lên tới **hàng chục tỷ**.\n\nKho địa chỉ IPv4 còn trống của tổ chức quản lý toàn cầu IANA đã **cạn vào năm 2011**; khu vực châu Á – Thái Bình Dương (APNIC) cũng chạm khối cuối cùng ngay trong năm đó.\n\nCó **ba phương pháp** xử lý, mỗi phương pháp tấn công vấn đề theo một hướng khác nhau:\n1. **CIDR** (cùng VLSM và gộp route): **cấp phát vừa đủ**, giảm lãng phí. Không tạo thêm địa chỉ, nhưng không phung phí địa chỉ đang có.\n2. **Private IP + NAT/PAT**: **tái sử dụng**. Một dải private dùng lại ở hàng triệu mạng; hàng nghìn thiết bị chia nhau một IP public.\n3. **IPv6**: **mở rộng không gian**. Thay vì tiết kiệm, tăng số địa chỉ lên gần như vô hạn.",
+        "question_ids": [
+          "q-net02-036"
+        ]
+      },
+      {
+        "id": "s8-cidr-saving",
+        "order": 8,
+        "title": "Phương pháp 1: CIDR, VLSM và gộp route tiết kiệm địa chỉ như thế nào",
+        "type": "deep_dive",
+        "content_md": "### Ý tưởng\nClassful chỉ có 3 'cỡ áo' cố định: 256, 65.536, 16.777.216 địa chỉ. CIDR cho phép **mọi cỡ là lũy thừa của 2** (/23 = 512, /22 = 1.024, /21 = 2.048...), nên cấp phát **sát với nhu cầu**.\n\n### Tiết kiệm khi cấp phát cho tổ chức\n| Nhu cầu | Classful phải cấp | Lãng phí | CIDR cấp | Lãng phí |\n|---|---|---|---|---|\n| 300 host | Lớp B: 65.536 | 65.236 (99,5%) | /23: 512 | 212 |\n| 2.000 host | Lớp B: 65.536 | 63.536 (97%) | /21: 2.048 | 48 |\n| 70.000 host | Lớp A: 16.777.216 | gần 16,7 triệu | /15: 131.072 | 61.072 |\n\nCách chọn: tìm lũy thừa của 2 nhỏ nhất ≥ (số host + 2). Ví dụ 300 + 2 = 302 → 2^9 = 512 → 32 − 9 = **/23**.\n\n### VLSM: chia một khối thành các subnet có kích thước khác nhau\nVLSM (Variable Length Subnet Mask) cho phép trong **cùng một khối** dùng nhiều prefix khác nhau. Ví dụ công ty được cấp `200.10.0.0/24` (256 địa chỉ) và có: phòng Kỹ thuật 100 máy, Kinh doanh 50 máy, Kế toán 20 máy, và 1 đường nối giữa 2 router.\n\n- Nếu bắt buộc mọi subnet cùng cỡ /24 (kiểu cũ): cần **4 × 256 = 1.024** địa chỉ.\n- Với VLSM, **xếp subnet lớn trước**, tất cả nằm gọn trong một /24:\n  - Kỹ thuật: `200.10.0.0/25` (126 host)\n  - Kinh doanh: `200.10.0.128/26` (62 host)\n  - Kế toán: `200.10.0.192/27` (30 host)\n  - Nối router: `200.10.0.224/30` (2 host)\n  - Còn dư `200.10.0.228` – `200.10.0.255` cho sau này.\n- Dùng **232 / 256** địa chỉ thay vì 1.024 → tiết kiệm khoảng **75%**.\n\n### Gộp route (route aggregation / supernetting)\nNhà mạng sở hữu 4 khối `200.10.0.0/24`, `200.10.1.0/24`, `200.10.2.0/24`, `200.10.3.0/24`. Thay vì quảng bá 4 dòng route ra Internet, họ quảng bá **một dòng `200.10.0.0/22`**. Điều này không tạo thêm địa chỉ nhưng giúp **bảng định tuyến của router toàn cầu nhỏ lại**; nếu không có CIDR, bảng định tuyến Internet đã phình to tới mức router không xử lý nổi.\n\n### Giới hạn\nCIDR chỉ **làm chậm** quá trình cạn kiệt, không giải quyết tận gốc vì tổng số địa chỉ vẫn là 4,3 tỷ.",
+        "comparison_table": {
+          "columns": [
+            "Cách cấp",
+            "Tổng địa chỉ cần",
+            "Ghi chú"
+          ],
+          "rows": [
+            [
+              "Mỗi phòng một /24",
+              "1.024",
+              "Lãng phí phần lớn"
+            ],
+            [
+              "VLSM trong một /24",
+              "256 (dùng 232)",
+              "Tiết kiệm ~75%"
+            ]
+          ]
+        },
+        "question_ids": [
+          "q-net02-037",
+          "q-net02-038",
+          "q-net02-039",
+          "q-net02-002",
+          "q-net02-004",
+          "q-net02-005"
+        ]
+      },
+      {
+        "id": "s9-private-nat",
+        "order": 9,
+        "title": "Phương pháp 2: Private IP + NAT/PAT tái sử dụng địa chỉ như thế nào",
+        "type": "deep_dive",
+        "content_md": "### Phần 'private': một dải dùng lại vô hạn lần\nBa dải private cộng lại có khoảng **17,9 triệu** địa chỉ (16.777.216 + 1.048.576 + 65.536). Con số này không lớn, nhưng điểm mấu chốt là **mọi mạng nội bộ trên thế giới đều được dùng lại cùng các dải đó**. Hàng trăm triệu hộ gia đình đều có thể dùng `192.168.1.x` mà không tốn một địa chỉ public nào.\n\n### Phần 'NAT': đổi private thành public khi ra ngoài\nRouter có **một IP public**. Khi gói tin đi ra, router đổi IP nguồn private thành IP public; khi phản hồi quay về thì đổi ngược lại.\n\n### Phần 'PAT': nhiều máy chung một IP public\n**PAT** (NAT overload) đổi thêm **port nguồn** và ghi vào **bảng NAT**:\n\n```\nBên trong              Bên ngoài (IP public)\n192.168.1.20:52341  →  113.161.5.9:40001\n192.168.1.21:52341  →  113.161.5.9:40002\n```\n\nHai laptop trùng port nguồn vẫn được phân biệt vì router gán cho mỗi kết nối một port public khác nhau.\n\n### Tiết kiệm cụ thể bao nhiêu\n- Một công ty 5.000 thiết bị: không có NAT cần **5.000 IP public**; có PAT chỉ cần **1 đến vài IP public**.\n- Một IP public có khoảng **65.000 port** cho mỗi giao thức. Vì một kết nối còn được phân biệt bởi IP và port đích, cùng một port public có thể tái sử dụng cho các đích khác nhau, nên trên thực tế một IP public phục vụ được rất nhiều thiết bị cùng lúc.\n- **CGNAT** (Carrier-Grade NAT): khi chính nhà mạng cũng thiếu IPv4, họ thêm **lớp NAT thứ hai**: router nhà em nhận IP trong dải `100.64.0.0/10` thay vì IP public thật, rồi nhà mạng NAT tiếp ra Internet. Hàng chục, hàng trăm hộ gia đình chia nhau một IP public.\n\n### Cái giá phải trả\n- **Phá vỡ nguyên tắc end-to-end:** máy ngoài không thể chủ động kết nối vào máy bên trong. Cần **port forwarding** (DNAT); dưới CGNAT thì người dùng còn không tự cấu hình được.\n- Ảnh hưởng ứng dụng P2P, game, gọi video: phải dùng kỹ thuật vượt NAT (STUN/TURN).\n- Khó truy vết: nhiều người dùng chung một IP, nên chặn một IP có thể chặn nhầm cả nhóm người dùng.\n- Router phải giữ trạng thái bảng NAT; bảng NAT/port có giới hạn (dẫn tới **SNAT port exhaustion** trên cloud).\n\n### Tình huống thực tế với backend\n- **Webhook về máy dev:** cổng thanh toán không gọi được `localhost:5000` sau NAT → dùng tunnel (ngrok, Dev Tunnels, Cloudflare Tunnel), hoạt động được vì máy em chủ động kết nối **ra** server tunnel.\n- **Whitelist IP database:** IP public ở nhà khác văn phòng và có thể đổi sau mỗi lần router khởi động lại.\n- **Đối tác whitelist IP:** cung cấp **outbound IP** của App Service; cần một IP tĩnh duy nhất thì dùng **NAT Gateway**.\n- **SNAT port exhaustion trên Azure:** gọi ra ngoài mà không tái sử dụng kết nối (`new HttpClient()` mỗi request) → hết port SNAT → timeout ngắt quãng. Xử lý: `IHttpClientFactory`, private endpoint, NAT Gateway.",
+        "diagram_ref": "nat_pat",
+        "question_ids": [
+          "q-net02-040",
+          "q-net02-041",
+          "q-net02-043",
+          "q-net02-009",
+          "q-net02-010",
+          "q-net02-021",
+          "q-net02-022",
+          "q-net02-023",
+          "q-net02-024"
+        ]
+      },
+      {
+        "id": "s10-ipv6",
+        "order": 10,
+        "title": "Phương pháp 3: IPv6 mở rộng không gian địa chỉ",
+        "type": "deep_dive",
+        "content_md": "### IPv6 không 'tiết kiệm', mà làm vấn đề biến mất\nIPv6 dài **128 bit** → **2^128 ≈ 3,4 × 10^38** địa chỉ. Để hình dung:\n- Một subnet IPv6 tiêu chuẩn là **/64**, chứa **2^64 ≈ 1,8 × 10^19** địa chỉ.\n- 2^64 / 2^32 = 2^32, nghĩa là **một mạng LAN IPv6 duy nhất lớn gấp khoảng 4,3 tỷ lần toàn bộ Internet IPv4**.\n- Nhà mạng thường cấp cho một hộ gia đình cả khối **/56** (256 subnet /64) hoặc /48.\n\nVì thế IPv6 không cần NAT để tiết kiệm: mỗi thiết bị có thể có địa chỉ public riêng, khôi phục nguyên tắc end-to-end (nhưng **vẫn cần firewall**).\n\n### Cách viết\n8 nhóm hex, mỗi nhóm 4 ký tự: `2001:0db8:0000:0000:0000:ff00:0042:8329`. Hai quy tắc rút gọn:\n1. Bỏ số 0 ở đầu mỗi nhóm (`0db8` → `db8`).\n2. Thay **một** chuỗi nhóm toàn 0 liên tiếp bằng `::` (chỉ một lần mỗi địa chỉ).\nKết quả: `2001:db8::ff00:42:8329`.\n\n### Đặc điểm khác\n- Loopback `::1`. Không có broadcast (dùng multicast).\n- Thiết bị có thể **tự cấu hình địa chỉ (SLAAC)** mà không cần DHCP.\n- Thực tế dùng **dual-stack** (chạy song song IPv4 và IPv6) vì chuyển đổi tốn kém.\n\n### Tình huống: localhost và IPv6\nServer chỉ bind `127.0.0.1:5000`, client gọi `http://localhost:5000` lại phân giải ra `::1` trước → connection refused. Xử lý: gọi `127.0.0.1`, hoặc cho server bind cả IPv4 và IPv6.",
+        "question_ids": [
+          "q-net02-042",
+          "q-net02-013",
+          "q-net02-014",
+          "q-net02-026"
+        ]
+      },
+      {
+        "id": "s11-methods-compare",
+        "order": 11,
+        "title": "So sánh ba phương pháp",
+        "type": "summary",
+        "content_md": "Ba phương pháp **bổ sung cho nhau** chứ không loại trừ nhau. Internet ngày nay dùng cả ba: CIDR ở mọi nơi, NAT ở hầu hết mạng IPv4, và IPv6 đang tăng dần theo dạng dual-stack.",
+        "comparison_table": {
+          "columns": [
+            "Tiêu chí",
+            "CIDR / VLSM",
+            "Private + NAT/PAT",
+            "IPv6"
+          ],
+          "rows": [
+            [
+              "Cách tiếp cận",
+              "Cấp phát vừa đủ",
+              "Tái sử dụng địa chỉ",
+              "Mở rộng không gian"
+            ],
+            [
+              "Tạo thêm địa chỉ?",
+              "Không",
+              "Không (dùng chung)",
+              "Có, 2^128"
+            ],
+            [
+              "Ví dụ hiệu quả",
+              "300 host: 512 thay vì 65.536",
+              "5.000 máy: 1 IP public",
+              "Một /64 lớn gấp 4,3 tỷ lần IPv4"
+            ],
+            [
+              "Lợi ích phụ",
+              "Bảng định tuyến nhỏ (gộp route)",
+              "Chặn kết nối vào chủ động",
+              "End-to-end, tự cấu hình"
+            ],
+            [
+              "Cái giá",
+              "Chỉ làm chậm cạn kiệt",
+              "Phá end-to-end, cần port forwarding, giới hạn port",
+              "Chi phí chuyển đổi, dual-stack phức tạp"
+            ],
+            [
+              "Thời điểm",
+              "1993",
+              "Giữa thập niên 1990",
+              "Chuẩn hóa 1998, triển khai rộng dần"
+            ]
+          ]
+        },
+        "question_ids": [
+          "q-net02-036"
+        ]
+      },
+      {
+        "id": "s12-ports",
+        "order": 12,
+        "title": "Port",
+        "type": "theory",
+        "content_md": "Port là số **16 bit** (0–65535) ở tầng 4, gồm ba dải:\n- **0–1023 (well-known):** dịch vụ chuẩn; trên Linux cần quyền root để bind.\n- **1024–49151 (registered):** ứng dụng phổ biến.\n- **49152–65535 (dynamic / ephemeral):** OS cấp tạm cho phía client (dải thực tế tùy OS).\n\n**Listen và connect:** server mở socket gắn vào IP:port cố định (Kestrel nghe `0.0.0.0:5000`) và chờ; client được OS cấp ephemeral port làm port nguồn rồi kết nối tới server. Mỗi IP:port chỉ **một tiến trình** listen tại một thời điểm.\n\n**Lỗi 'Address already in use':** có tiến trình khác chiếm port (thường là phiên chạy cũ). Kiểm tra: Windows `netstat -ano | findstr :5000`; Linux / macOS `lsof -i :5000` hoặc `ss -tlnp`. Tắt tiến trình đó hoặc đổi port trong `launchSettings.json` / `appsettings.json`.",
+        "table": {
+          "columns": [
+            "Port",
+            "Dịch vụ"
+          ],
+          "rows": [
+            [
+              "20/21",
+              "FTP"
+            ],
+            [
+              "22",
+              "SSH"
+            ],
+            [
+              "25",
+              "SMTP"
+            ],
+            [
+              "53",
+              "DNS"
+            ],
+            [
+              "80",
+              "HTTP"
+            ],
+            [
+              "443",
+              "HTTPS"
+            ],
+            [
+              "1433",
+              "SQL Server"
+            ],
+            [
+              "3306",
+              "MySQL"
+            ],
+            [
+              "3389",
+              "RDP"
+            ],
+            [
+              "5432",
+              "PostgreSQL"
+            ],
+            [
+              "6379",
+              "Redis"
+            ],
+            [
+              "27017",
+              "MongoDB"
+            ]
+          ]
+        },
+        "question_ids": [
+          "q-net02-011",
+          "q-net02-012",
+          "q-net02-025"
+        ]
+      },
+      {
+        "id": "s13-cloud-docker",
+        "order": 13,
+        "title": "Thiết kế mạng trên cloud và Docker",
+        "type": "practice",
+        "content_md": "### Subnet trên Azure\nMỗi subnet bị **giữ 5 địa chỉ**: network, `.1` (gateway), `.2` và `.3` (DNS của Azure), broadcast. Subnet /24 chỉ còn **251** địa chỉ; subnet nhỏ nhất là /29. AWS cũng giữ 5.\n\nThiết kế VNet điển hình:\n```\nVNet:          10.0.0.0/16\n├─ web-subnet: 10.0.1.0/24   (App Gateway, frontend)\n├─ app-subnet: 10.0.2.0/24   (API backend)\n└─ db-subnet:  10.0.3.0/24   (database, chỉ cho app-subnet truy cập)\n```\nMỗi subnet có NSG riêng; database chỉ nhận port 1433 từ `10.0.2.0/24`, dùng private endpoint.\n\n### Tình huống\n- **VNet peering thất bại:** hai VNet cùng dải `10.0.0.0/16` → chồng lấn, router không biết `10.0.1.5` thuộc bên nào. Lên kế hoạch dải IP từ đầu: dev `10.1.0.0/16`, staging `10.2.0.0/16`, production `10.3.0.0/16`.\n- **Bật Docker mất kết nối mạng công ty:** bridge mặc định `172.17.0.0/16` trùng dải công ty / VPN → đổi `bip` hoặc `default-address-pools` của Docker daemon.\n- **docker-compose:** API gọi database bằng **tên service** (`Server=db;Port=1433`), không dùng `localhost`, vì `localhost` trong container là chính container đó; Docker có DNS nội bộ phân giải tên service.",
+        "question_ids": [
+          "q-net02-015",
+          "q-net02-027",
+          "q-net02-028",
+          "q-net02-029"
+        ]
+      },
+      {
+        "id": "s14-dhcp-static",
+        "order": 14,
+        "title": "DHCP và IP tĩnh",
+        "type": "theory",
+        "content_md": "**DHCP** cấp IP, mask, gateway, DNS tự động theo 4 bước **DORA**: **Discover** (client broadcast tìm DHCP server), **Offer** (server đề nghị một IP), **Request** (client xin nhận IP đó), **Acknowledge** (server xác nhận). IP được cấp có **thời hạn thuê (lease)** và được gia hạn định kỳ.\n\n**IP động** phù hợp cho thiết bị người dùng. **IP tĩnh** (hoặc DHCP reservation) cần cho thứ mà người khác phải tìm tới bằng địa chỉ cố định: server, máy in, gateway, rule whitelist. Trên cloud, thường dùng tên DNS hoặc IP tĩnh được gắn vào tài nguyên.",
+        "question_ids": [
+          "q-net02-044",
+          "q-net02-045",
+          "q-net02-007"
+        ]
+      }
+    ],
+    "mnemonics": [
+      {
+        "purpose": "Giá trị bit trong một octet",
+        "text": "128 64 32 16 8 4 2 1",
+        "mapping": "Cộng các bit 1 để ra giá trị thập phân"
+      },
+      {
+        "purpose": "Block size",
+        "text": "256 trừ mask",
+        "mapping": "Block size = 256 − giá trị mask ở octet thú vị"
+      },
+      {
+        "purpose": "Mask phổ biến ở octet thú vị",
+        "text": "128 192 224 240 248 252 254 255",
+        "mapping": "Tương ứng 1 đến 8 bit mạng trong octet đó"
+      },
+      {
+        "purpose": "Dải private",
+        "text": "10 – 172.16 tới 31 – 192.168",
+        "mapping": "10/8, 172.16/12, 192.168/16"
+      },
+      {
+        "purpose": "Quyết định gửi",
+        "text": "Cùng mạng gửi thẳng, khác mạng gửi gateway",
+        "mapping": "So sánh (IP AND mask) của mình và của đích"
+      }
+    ],
+    "diagrams": {
+      "routing_decision": {
+        "type": "flowchart",
+        "description": "Máy quyết định gửi trực tiếp hay qua gateway.",
+        "nodes": [
+          {
+            "id": "start",
+            "label": "Có gói tin cần gửi tới IP đích"
+          },
+          {
+            "id": "and_self",
+            "label": "Tính IP mình AND mask mình"
+          },
+          {
+            "id": "and_dst",
+            "label": "Tính IP đích AND mask mình"
+          },
+          {
+            "id": "compare",
+            "label": "Hai kết quả bằng nhau?",
+            "shape": "decision"
+          },
+          {
+            "id": "arp_dst",
+            "label": "ARP tìm MAC của máy đích"
+          },
+          {
+            "id": "send_direct",
+            "label": "Gửi frame thẳng tới máy đích"
+          },
+          {
+            "id": "has_gw",
+            "label": "Có default gateway?",
+            "shape": "decision"
+          },
+          {
+            "id": "arp_gw",
+            "label": "ARP tìm MAC của gateway"
+          },
+          {
+            "id": "send_gw",
+            "label": "Frame: MAC đích = gateway, IP đích = máy cuối"
+          },
+          {
+            "id": "fail",
+            "label": "Lỗi: No route to host"
+          }
+        ],
+        "edges": [
+          {
+            "from": "start",
+            "to": "and_self"
+          },
+          {
+            "from": "and_self",
+            "to": "and_dst"
+          },
+          {
+            "from": "and_dst",
+            "to": "compare"
+          },
+          {
+            "from": "compare",
+            "to": "arp_dst",
+            "label": "Có (cùng mạng)"
+          },
+          {
+            "from": "arp_dst",
+            "to": "send_direct"
+          },
+          {
+            "from": "compare",
+            "to": "has_gw",
+            "label": "Không (khác mạng)"
+          },
+          {
+            "from": "has_gw",
+            "to": "arp_gw",
+            "label": "Có"
+          },
+          {
+            "from": "arp_gw",
+            "to": "send_gw"
+          },
+          {
+            "from": "has_gw",
+            "to": "fail",
+            "label": "Không"
+          }
+        ]
+      },
+      "nat_pat": {
+        "type": "nat_table",
+        "description": "Hai laptop cùng port nguồn 52341 dùng chung IP public 113.161.5.9 qua PAT.",
+        "inside": [
+          {
+            "device": "Laptop A",
+            "ip_port": "192.168.1.20:52341"
+          },
+          {
+            "device": "Laptop B",
+            "ip_port": "192.168.1.21:52341"
+          }
+        ],
+        "router": {
+          "public_ip": "113.161.5.9",
+          "nat_table": [
+            {
+              "inside": "192.168.1.20:52341",
+              "outside": "113.161.5.9:40001"
+            },
+            {
+              "inside": "192.168.1.21:52341",
+              "outside": "113.161.5.9:40002"
+            }
+          ]
+        },
+        "server": "20.40.1.5:443",
+        "caption": "Server chỉ thấy 113.161.5.9, phân biệt hai máy bằng port 40001 và 40002."
+      }
+    },
+    "questions": [
+      {
+        "id": "q-net02-001",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "easy",
+        "tags": [
+          "ipv4",
+          "binary"
+        ],
+        "question": "IPv4 có bao nhiêu bit? Sao giá trị mỗi octet chỉ tới 255?",
+        "answer_short": "32 bit, 4 octet; mỗi octet 8 bit nên tối đa 2^8 − 1 = 255.",
+        "answer_md": "IPv4 có **32 bit**, chia 4 octet. Mỗi octet có 8 bit nên giá trị lớn nhất là 2^8 − 1 = **255** (`11111111`). Vì vậy `192.168.1.300` không hợp lệ.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-002",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "easy",
+        "tags": [
+          "classful",
+          "cidr"
+        ],
+        "question": "Tại sao lại bỏ hệ thống lớp A, B, C?",
+        "answer_short": "Quá cứng nhắc, lãng phí địa chỉ; CIDR cấp phát với mọi cỡ lũy thừa của 2.",
+        "answer_md": "Hệ thống lớp chỉ có ba cỡ cố định nên lãng phí: cần 300 địa chỉ phải nhận cả lớp B 65.536 (lãng phí 99,5%). **CIDR** cho phép cỡ bất kỳ theo lũy thừa của 2 (ví dụ /23 = 512) và hỗ trợ gộp route để bảng định tuyến nhỏ lại.",
+        "follow_ups": [
+          "Ngày nay còn gặp khái niệm lớp ở đâu?"
+        ]
+      },
+      {
+        "id": "q-net02-003",
+        "source": "lesson",
+        "type": "trick",
+        "difficulty": "medium",
+        "tags": [
+          "subnet",
+          "routing-decision"
+        ],
+        "question": "Máy A 192.168.1.100/26 và máy B 192.168.1.130/26 có nói chuyện trực tiếp được không?",
+        "answer_short": "Không: /26 có block size 64, A thuộc mạng .64, B thuộc mạng .128, phải qua router.",
+        "answer_md": "Không. /26 có block size **64**. A thuộc khối 64–127 (mạng `192.168.1.64`), B thuộc khối 128–191 (mạng `192.168.1.128`). Kiểm tra bằng AND octet 4: `100 AND 192 = 64`, `130 AND 192 = 128`. Hai máy ở hai subnet khác nhau nên gói tin phải qua gateway. Bẫy ở chỗ ba octet đầu giống nhau.",
+        "follow_ups": [
+          "Nếu mask là /24 thì sao?"
+        ]
+      },
+      {
+        "id": "q-net02-004",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "medium",
+        "tags": [
+          "subnetting"
+        ],
+        "question": "Chia mạng 10.0.0.0/24 thành 4 subnet bằng nhau. Liệt kê các subnet.",
+        "answer_short": "Mượn 2 bit → /26: .0/26, .64/26, .128/26, .192/26.",
+        "answer_md": "4 = 2^2 nên mượn thêm 2 bit: /24 thành **/26**, mỗi subnet 64 địa chỉ: `10.0.0.0/26`, `10.0.0.64/26`, `10.0.0.128/26`, `10.0.0.192/26`.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-005",
+        "source": "lesson",
+        "type": "scenario",
+        "difficulty": "medium",
+        "tags": [
+          "subnetting",
+          "azure"
+        ],
+        "question": "Cần một subnet chứa 50 server. Chọn prefix nào?",
+        "answer_short": "Cần ≥ 52 địa chỉ → /26 (62 host); trên Azure trừ 5 còn 59; thực tế nên chọn rộng hơn để scale.",
+        "answer_md": "Cần 50 + 2 = 52 địa chỉ; lũy thừa của 2 gần nhất là 64 → **/26** (62 host). Trên Azure trừ 5 địa chỉ còn 59, vẫn đủ. Nhưng nên chọn rộng hơn (ví dụ /24) để còn chỗ scale vì đổi kích thước subnet đang có tài nguyên rất phiền.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-006",
+        "source": "lesson",
+        "type": "trick",
+        "difficulty": "easy",
+        "tags": [
+          "private-ip"
+        ],
+        "question": "172.20.5.1 là IP public hay private? Còn 172.32.5.1?",
+        "answer_short": "172.20.5.1 private (dải 172.16–172.31); 172.32.5.1 public.",
+        "answer_md": "`172.20.5.1` là **private** vì dải `172.16.0.0/12` kéo dài từ 172.16 đến **172.31**. `172.32.5.1` nằm ngoài dải nên là **public**.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-007",
+        "source": "lesson",
+        "type": "scenario",
+        "difficulty": "easy",
+        "tags": [
+          "dhcp",
+          "apipa",
+          "debug"
+        ],
+        "question": "Laptop có IP 169.254.10.5 và không vào được mạng. Vấn đề là gì?",
+        "answer_short": "Không xin được IP từ DHCP nên tự gán link-local; kiểm tra kết nối và DHCP, chạy ipconfig /renew.",
+        "answer_md": "Máy **không nhận được IP từ DHCP** (router hỏng, cáp lỏng, Wi-Fi chưa xác thực, DHCP hết địa chỉ) nên tự gán địa chỉ **link-local**. Nó không ra Internet được. Kiểm tra kết nối vật lý và DHCP server, rồi xin cấp lại IP (`ipconfig /renew`).",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-008",
+        "source": "lesson",
+        "type": "scenario",
+        "difficulty": "easy",
+        "tags": [
+          "firewall",
+          "security",
+          "database"
+        ],
+        "question": "Một rule firewall cho phép 0.0.0.0/0 truy cập port 1433. Có vấn đề gì?",
+        "answer_short": "Mở SQL Server cho toàn bộ Internet; chỉ nên cho IP /32 cụ thể, subnet ứng dụng hoặc dùng private endpoint.",
+        "answer_md": "`0.0.0.0/0` là **mọi địa chỉ**, nên database bị mở cho toàn Internet; bot sẽ quét và dò mật khẩu ngay. Chỉ cho phép IP cụ thể (`x.x.x.x/32`), subnet của ứng dụng, hoặc tốt nhất dùng **private endpoint**.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-009",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "medium",
+        "tags": [
+          "nat",
+          "security"
+        ],
+        "question": "NAT có phải là một cơ chế bảo mật không?",
+        "answer_short": "Không hẳn: NAT để tiết kiệm IPv4; chặn kết nối vào chỉ là tác dụng phụ, không thay firewall.",
+        "answer_md": "NAT ra đời để **tiết kiệm IPv4**. Tác dụng phụ là chặn kết nối chủ động từ ngoài vào, nhưng nó không kiểm tra nội dung, không chặn được mã độc máy bên trong tự tải về, và port forwarding sai có thể mở lỗ hổng. Vẫn cần firewall.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-010",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "easy",
+        "tags": [
+          "private-ip",
+          "nat"
+        ],
+        "question": "Tại sao hai nhà khác nhau đều có máy IP 192.168.1.5 mà không xung đột?",
+        "answer_short": "IP private chỉ có nghĩa trong mạng nội bộ; ra Internet đã được NAT thành hai IP public khác nhau.",
+        "answer_md": "IP private chỉ có ý nghĩa **trong mạng nội bộ** của mỗi nhà; khi ra Internet, NAT đổi chúng thành hai IP public khác nhau. Trùng private chỉ gây xung đột khi hai mạng được **nối trực tiếp** (VPN, VNet peering).",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-011",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "easy",
+        "tags": [
+          "port",
+          "security"
+        ],
+        "question": "Vì sao không nên mở port database (1433, 5432) ra Internet?",
+        "answer_short": "Bot quét liên tục để dò mật khẩu / khai thác; giảm bề mặt tấn công.",
+        "answer_md": "Bot liên tục quét Internet tìm port database đang mở để dò mật khẩu hoặc khai thác lỗ hổng. Database chỉ nên nhận kết nối từ ứng dụng qua mạng riêng hoặc whitelist chặt. Nguyên tắc: **giảm bề mặt tấn công**.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-012",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "medium",
+        "tags": [
+          "port",
+          "reverse-proxy"
+        ],
+        "question": "Hai ứng dụng trên cùng một máy có thể cùng listen port 80 không?",
+        "answer_short": "Không trên cùng IP:port; dùng reverse proxy, mỗi app một IP, hoặc container map port khác.",
+        "answer_md": "Không thể cùng listen trên cùng IP:port. Cách xử lý: mỗi app một port và đặt **reverse proxy** (Nginx, IIS, YARP) ở port 80 route theo tên miền / path; hoặc mỗi app bind một IP riêng; hoặc chạy container và map ra port host khác nhau.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-013",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "easy",
+        "tags": [
+          "ipv6"
+        ],
+        "question": "Rút gọn 2001:0db8:0000:0000:0001:0000:0000:0001.",
+        "answer_short": "2001:db8::1:0:0:1",
+        "answer_md": "Bỏ số 0 đầu nhóm: `2001:db8:0:0:1:0:0:1`. Có hai chuỗi 0 dài bằng nhau nhưng `::` chỉ dùng một lần; theo quy ước thay chuỗi **đầu tiên**: `2001:db8::1:0:0:1`.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-014",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "easy",
+        "tags": [
+          "ipv6",
+          "ipv4"
+        ],
+        "question": "Có IPv6 rồi sao IPv4 vẫn còn dùng nhiều?",
+        "answer_short": "Chuyển đổi tốn kém; NAT và CIDR kéo dài tuổi thọ IPv4; hai giao thức cùng tồn tại dạng dual-stack.",
+        "answer_md": "Chuyển đổi rất tốn kém: thiết bị, phần mềm, cấu hình cũ đều phải thay. NAT và CIDR đã kéo dài tuổi thọ IPv4 đủ dùng, nên hai giao thức cùng tồn tại lâu dài theo dạng **dual-stack**.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-015",
+        "source": "lesson",
+        "type": "scenario",
+        "difficulty": "medium",
+        "tags": [
+          "azure",
+          "vnet",
+          "design"
+        ],
+        "question": "Thiết kế VNet cho hệ thống gồm web, API và database trên Azure.",
+        "answer_short": "VNet /16 không chồng lấn; 3 subnet /24 (web, API, DB); NSG theo lớp; DB private endpoint.",
+        "answer_md": "Chọn VNet `10.0.0.0/16`, đủ rộng và không trùng các mạng sẽ kết nối. Chia subnet /24 cho web, API, database, chừa phần trống. Mỗi subnet có NSG: web chỉ nhận 443 (từ Internet hoặc từ Application Gateway), API chỉ nhận từ subnet web, database chỉ nhận 1433 từ subnet API; database dùng private endpoint. Ba ý chính: **dư cho scale, không chồng lấn, phân quyền theo subnet**.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-016",
+        "source": "lesson",
+        "type": "trick",
+        "difficulty": "hard",
+        "tags": [
+          "subnet",
+          "broadcast"
+        ],
+        "question": "Trong 192.168.1.0/24 có gán .0 hoặc .255 cho máy được không? Với /23 thì sao?",
+        "answer_short": "Với /24 thì không. Với 192.168.0.0/23, 192.168.0.255 và 192.168.1.0 lại là host hợp lệ.",
+        "answer_md": "Với /24: `.0` là network, `.255` là broadcast, không gán được. Nhưng với `192.168.0.0/23`, `192.168.0.255` và `192.168.1.0` **là host hợp lệ** vì nằm giữa khối; network là `192.168.0.0`, broadcast là `192.168.1.255`. Câu này kiểm tra em hiểu bản chất thay vì học thuộc.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-017",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "easy",
+        "tags": [
+          "cidr",
+          "firewall"
+        ],
+        "question": "/32 dùng để làm gì?",
+        "answer_short": "Đại diện đúng một IP; hay dùng trong rule firewall.",
+        "answer_md": "/32 đại diện **đúng một địa chỉ IP**, hay gặp trong rule firewall, ví dụ chỉ cho `203.0.113.10/32` truy cập SSH.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-018",
+        "source": "lesson",
+        "type": "trick",
+        "difficulty": "hard",
+        "tags": [
+          "cidr"
+        ],
+        "question": "/31 có dùng được không, khi trừ 2 thì còn 0 host?",
+        "answer_short": "Có, theo RFC 3021 cho kết nối điểm–điểm giữa hai router.",
+        "answer_md": "Có. Theo **RFC 3021**, /31 dùng cho **kết nối điểm–điểm** giữa hai router; chỉ có hai đầu nên không cần network và broadcast. Đây là ngoại lệ của công thức 'trừ 2'.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-019",
+        "source": "lesson",
+        "type": "trick",
+        "difficulty": "easy",
+        "tags": [
+          "nat",
+          "public-ip"
+        ],
+        "question": "IP public em thấy trên trang 'what is my IP' có phải IP của laptop không?",
+        "answer_short": "Không, đó là IP public của router (hoặc của nhà mạng nếu CGNAT); IP laptop là private.",
+        "answer_md": "Không. Đó là IP public của **router** sau NAT, hoặc của nhà mạng nếu dùng CGNAT. IP thật của laptop là IP private, xem bằng `ipconfig` / `ip addr`.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-020",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "medium",
+        "tags": [
+          "dotnet",
+          "subnet"
+        ],
+        "question": "Trong .NET, làm sao kiểm tra một IP thuộc một subnet?",
+        "answer_short": "Từ .NET 8: IPNetwork.Parse(\"10.0.2.0/24\").Contains(ip); trước đó tự AND mảng byte.",
+        "answer_md": "Từ .NET 8 có `System.Net.IPNetwork`: `IPNetwork.Parse(\"10.0.2.0/24\").Contains(IPAddress.Parse(\"10.0.2.15\"))`. Phiên bản trước phải tự làm phép AND trên mảng byte. Ứng dụng: cấu hình `KnownNetworks` cho forwarded headers (Chương 1).",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-021",
+        "source": "lesson",
+        "type": "scenario",
+        "difficulty": "medium",
+        "tags": [
+          "nat",
+          "webhook",
+          "dev"
+        ],
+        "question": "Cổng thanh toán không gọi được webhook về API đang chạy localhost. Vì sao, xử lý thế nào?",
+        "answer_short": "Máy dev sau NAT, không nhận kết nối từ ngoài vào; dùng tunnel như ngrok, Dev Tunnels, Cloudflare Tunnel.",
+        "answer_md": "API chạy ở `localhost` **sau NAT**, nên server bên ngoài không chủ động kết nối vào được. Khi dev, dùng **tunnel** (ngrok, Dev Tunnels của Visual Studio, Cloudflare Tunnel) để có URL public. Tunnel hoạt động vì máy em chủ động mở kết nối **ra** server tunnel, request được đưa ngược vào qua kết nối đó.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-022",
+        "source": "lesson",
+        "type": "scenario",
+        "difficulty": "easy",
+        "tags": [
+          "whitelist",
+          "public-ip"
+        ],
+        "question": "Database Azure whitelist IP văn phòng; về nhà làm thì không kết nối được. Vì sao?",
+        "answer_short": "IP public ở nhà khác văn phòng và có thể đổi sau mỗi lần router khởi động lại.",
+        "answer_md": "Whitelist theo **IP public**. IP public ở nhà khác văn phòng, và nhà mạng gia đình còn có thể **đổi IP public** sau mỗi lần router khởi động lại. Cần thêm IP hiện tại, hoặc dùng VPN về mạng công ty / private endpoint.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-023",
+        "source": "lesson",
+        "type": "scenario",
+        "difficulty": "medium",
+        "tags": [
+          "azure",
+          "outbound-ip",
+          "nat-gateway"
+        ],
+        "question": "Đối tác chỉ cho phép IP đã đăng ký gọi vào hệ thống của họ. API của em chạy trên App Service. Em cung cấp gì?",
+        "answer_short": "Danh sách outbound IP của App Service; cần một IP tĩnh duy nhất thì dùng NAT Gateway.",
+        "answer_md": "Cung cấp **danh sách outbound IP** của App Service (xem trong Azure Portal). Nếu cần một IP cố định duy nhất, cho traffic đi ra qua **NAT Gateway** có IP public tĩnh.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-024",
+        "source": "lesson",
+        "type": "scenario",
+        "difficulty": "hard",
+        "tags": [
+          "snat",
+          "azure",
+          "httpclient"
+        ],
+        "question": "API trên Azure thỉnh thoảng timeout khi gọi API bên thứ ba dù code không lỗi. Nguyên nhân có thể là gì?",
+        "answer_short": "SNAT port exhaustion do tạo quá nhiều kết nối mới; dùng IHttpClientFactory, private endpoint, NAT Gateway.",
+        "answer_md": "Có thể là **SNAT port exhaustion**: mỗi kết nối ra ngoài chiếm một port SNAT trên IP outbound dùng chung, số port có giới hạn. Code tạo kết nối mới liên tục (`new HttpClient()` mỗi request) sẽ làm cạn port → timeout ngắt quãng. Xử lý: tái sử dụng kết nối bằng `IHttpClientFactory`, dùng private endpoint, gắn NAT Gateway.",
+        "follow_ups": [
+          "Làm sao xác nhận đây là SNAT exhaustion? (Azure Portal có công cụ chẩn đoán SNAT cho App Service)"
+        ]
+      },
+      {
+        "id": "q-net02-025",
+        "source": "lesson",
+        "type": "scenario",
+        "difficulty": "easy",
+        "tags": [
+          "port",
+          "debug"
+        ],
+        "question": "Chạy API báo lỗi 'address already in use'. Em làm gì?",
+        "answer_short": "Có tiến trình khác chiếm port; tìm bằng netstat -ano / lsof -i, tắt nó hoặc đổi port.",
+        "answer_md": "Đã có tiến trình khác chiếm port, thường là phiên chạy cũ. Windows: `netstat -ano | findstr :5000` lấy PID; Linux / macOS: `lsof -i :5000` hoặc `ss -tlnp`. Tắt tiến trình đó hoặc đổi port trong `launchSettings.json` / `appsettings.json`.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-026",
+        "source": "lesson",
+        "type": "scenario",
+        "difficulty": "medium",
+        "tags": [
+          "ipv6",
+          "localhost",
+          "debug"
+        ],
+        "question": "Server bind 127.0.0.1:5000, client gọi http://localhost:5000 bị connection refused. Vì sao?",
+        "answer_short": "localhost phân giải ra ::1 (IPv6) trước, server chỉ nghe IPv4.",
+        "answer_md": "`localhost` có thể phân giải ra `::1` (IPv6) trước, trong khi server chỉ nghe `127.0.0.1` (IPv4) → refused. Gọi thẳng `127.0.0.1`, hoặc cho server nghe cả IPv4 lẫn IPv6.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-027",
+        "source": "lesson",
+        "type": "scenario",
+        "difficulty": "medium",
+        "tags": [
+          "vnet",
+          "peering",
+          "overlap"
+        ],
+        "question": "Hai VNet cùng dải 10.0.0.0/16 không peering được. Vì sao, phòng tránh thế nào?",
+        "answer_short": "Dải chồng lấn nên router không phân biệt được; lên kế hoạch dải IP không trùng cho mọi môi trường.",
+        "answer_md": "Dải địa chỉ **chồng lấn**: router không biết `10.0.1.5` thuộc VNet nào. Phòng tránh: lên kế hoạch IP từ đầu cho mọi môi trường và cả mạng văn phòng / VPN, ví dụ dev `10.1.0.0/16`, staging `10.2.0.0/16`, production `10.3.0.0/16`.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-028",
+        "source": "lesson",
+        "type": "scenario",
+        "difficulty": "medium",
+        "tags": [
+          "docker",
+          "overlap"
+        ],
+        "question": "Bật Docker xong thì mất kết nối tới server nội bộ công ty. Vì sao?",
+        "answer_short": "Bridge mặc định 172.17.0.0/16 trùng dải mạng công ty; đổi bip / default-address-pools.",
+        "answer_md": "Docker tạo bridge `172.17.0.0/16`. Nếu mạng công ty / VPN cũng dùng `172.17.x.x`, máy định tuyến nhầm gói tin vào Docker. Đổi dải trong cấu hình daemon (`bip` hoặc `default-address-pools`).",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-029",
+        "source": "lesson",
+        "type": "scenario",
+        "difficulty": "easy",
+        "tags": [
+          "docker",
+          "localhost",
+          "dns"
+        ],
+        "question": "Trong docker-compose, API kết nối database bằng localhost bị lỗi. Vì sao?",
+        "answer_short": "localhost trong container là chính container API; dùng tên service (vd db) nhờ DNS nội bộ Docker.",
+        "answer_md": "Mỗi container có IP riêng; `localhost` trong container API là **chính container API**. Dùng **tên service**, ví dụ `Server=db;Port=1433`; Docker có DNS nội bộ phân giải tên service ra IP container.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-030",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "medium",
+        "tags": [
+          "routing-decision",
+          "subnet",
+          "arp"
+        ],
+        "question": "Khi gửi một gói tin, máy tính quyết định gửi trực tiếp hay qua gateway như thế nào?",
+        "answer_short": "AND IP mình và IP đích với mask của mình; bằng nhau thì ARP tìm MAC đích gửi thẳng, khác thì ARP tìm MAC gateway và gửi cho gateway.",
+        "answer_md": "(1) Tính `IP mình AND mask mình`. (2) Tính `IP đích AND mask mình`. (3) **Bằng nhau** → cùng mạng: ARP lấy MAC của máy đích, gửi trực tiếp. **Khác nhau** → ARP lấy MAC của **default gateway**, gửi frame tới gateway, IP đích vẫn là máy cuối. Thực tế OS tra **routing table** và chọn route có **prefix dài nhất**; route `0.0.0.0/0` (default) dùng khi không route nào cụ thể hơn khớp.",
+        "follow_ups": [
+          "Router trên Internet có làm tương tự không?",
+          "Lệnh nào xem bảng định tuyến? (`route print`, `ip route`)"
+        ]
+      },
+      {
+        "id": "q-net02-031",
+        "source": "lesson",
+        "type": "trick",
+        "difficulty": "medium",
+        "tags": [
+          "routing-decision",
+          "mac",
+          "ip"
+        ],
+        "question": "Khi gửi gói tin ra Internet qua gateway, IP đích và MAC đích trong frame là gì?",
+        "answer_short": "IP đích = server cuối cùng; MAC đích = MAC của gateway.",
+        "answer_md": "**IP đích** là IP của server cuối cùng (không đổi). **MAC đích** là MAC của **default gateway**, vì MAC chỉ dùng để giao tới chặng kế tiếp. Nhiều bạn nhầm rằng IP đích là IP router.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-032",
+        "source": "lesson",
+        "type": "trick",
+        "difficulty": "medium",
+        "tags": [
+          "routing-decision",
+          "subnet-mask"
+        ],
+        "question": "Khi so sánh, máy dùng subnet mask của mình hay của máy đích?",
+        "answer_short": "Của mình; máy không biết mask của bên kia.",
+        "answer_md": "Mask **của chính mình**. Máy không biết mask của máy đích; nó chỉ kiểm tra 'áp ranh giới mạng của tôi lên địa chỉ này thì có thuộc mạng tôi không'. Vì vậy cấu hình sai mask ở một máy làm chính máy đó quyết định sai.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-033",
+        "source": "lesson",
+        "type": "scenario",
+        "difficulty": "hard",
+        "tags": [
+          "subnet-mask",
+          "misconfiguration",
+          "debug"
+        ],
+        "question": "Một máy bị cấu hình sai subnet mask. Hiện tượng sẽ thế nào?",
+        "answer_short": "Mask rộng hơn thực tế: tưởng máy mạng khác là cùng mạng, ARP không ai trả lời, không kết nối được. Mask hẹp hơn: máy cùng LAN bị đẩy qua router.",
+        "answer_md": "Ví dụ mạng thật `192.168.1.0/24`, máy X cấu hình nhầm `/16`. X gửi tới `192.168.5.10` (mạng khác): X tưởng cùng mạng, gửi ARP trong LAN, **không ai trả lời** → thất bại dù router vẫn tốt. Ngược lại, mask hẹp hơn thực tế (ví dụ /25) thì một số máy cùng LAN bị coi là khác mạng, gói đi vòng qua router, có thể chậm hoặc bị chặn. Dấu hiệu: gọi được máy này nhưng không gọi được máy kia ở cùng nơi.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-034",
+        "source": "lesson",
+        "type": "scenario",
+        "difficulty": "medium",
+        "tags": [
+          "default-gateway",
+          "debug"
+        ],
+        "question": "Máy không có default gateway thì chuyện gì xảy ra?",
+        "answer_short": "Vẫn nói chuyện được với máy cùng subnet nhưng không ra được mạng khác / Internet.",
+        "answer_md": "Máy vẫn gửi được tới máy **cùng subnet** (gửi trực tiếp qua ARP), nhưng với đích khác mạng thì không có nơi để chuyển, nên báo lỗi kiểu 'Destination host unreachable' / 'No route to host'. Không ra được Internet.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-035",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "medium",
+        "tags": [
+          "routing-table",
+          "longest-prefix-match"
+        ],
+        "question": "Longest prefix match là gì? Cho ví dụ.",
+        "answer_short": "Khi nhiều route khớp, chọn route có prefix dài nhất (cụ thể nhất).",
+        "answer_md": "Khi IP đích khớp nhiều dòng trong bảng định tuyến, router / OS chọn dòng có **prefix dài nhất**. Ví dụ bảng: `10.0.0.0/8 → A`, `10.1.0.0/16 → B`, `0.0.0.0/0 → C`. Đích `10.1.5.5` → B; `10.2.0.1` → A; `8.8.8.8` → C. Default route /0 vì vậy luôn là lựa chọn cuối cùng.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-036",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "medium",
+        "tags": [
+          "ipv4-exhaustion",
+          "cidr",
+          "nat",
+          "ipv6"
+        ],
+        "question": "Có những cách nào giải quyết vấn đề cạn kiệt IPv4? So sánh.",
+        "answer_short": "CIDR (cấp vừa đủ), Private + NAT/PAT (tái sử dụng), IPv6 (mở rộng 2^128); dùng bổ sung cho nhau.",
+        "answer_md": "Ba cách: (1) **CIDR / VLSM** cấp phát vừa đủ, giảm lãng phí (300 host cần /23 = 512 thay vì 65.536), nhưng chỉ làm chậm cạn kiệt. (2) **Private + NAT/PAT** tái sử dụng: dải private dùng lại ở mọi mạng, hàng nghìn thiết bị chung một IP public; cái giá là phá end-to-end. (3) **IPv6** mở rộng lên 2^128; một /64 đã lớn gấp 4,3 tỷ lần toàn IPv4; cái giá là chi phí chuyển đổi. Internet hiện dùng cả ba.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-037",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "medium",
+        "tags": [
+          "cidr",
+          "address-saving"
+        ],
+        "question": "Cụ thể CIDR tiết kiệm địa chỉ như thế nào?",
+        "answer_short": "Cho phép mọi cỡ lũy thừa của 2: 300 host chỉ cần /23 (512) thay vì lớp B (65.536).",
+        "answer_md": "Classful chỉ có 256 / 65.536 / 16,7 triệu. CIDR cho phép mọi cỡ lũy thừa của 2. Công ty 300 host: classful phải cấp lớp B (lãng phí 65.236, 99,5%), CIDR cấp **/23 = 512** (lãng phí 212). 2.000 host: /21 = 2.048 thay vì 65.536. Cách chọn: lũy thừa của 2 nhỏ nhất ≥ số host + 2.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-038",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "hard",
+        "tags": [
+          "vlsm",
+          "subnetting"
+        ],
+        "question": "VLSM là gì? Cho ví dụ.",
+        "answer_short": "Chia một khối thành subnet nhiều cỡ khác nhau, xếp lớn trước; ví dụ 100/50/20 máy + link router gọn trong một /24.",
+        "answer_md": "VLSM (Variable Length Subnet Mask) dùng nhiều prefix khác nhau trong cùng một khối. Ví dụ khối `200.10.0.0/24`, cần 100, 50, 20 máy và một link router: `/25` (.0) cho 100 máy, `/26` (.128) cho 50, `/27` (.192) cho 20, `/30` (.224) cho link. Tổng 232/256 địa chỉ, thay vì 1.024 nếu mỗi phòng một /24. **Xếp subnet lớn trước** để tránh chồng lấn.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-039",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "hard",
+        "tags": [
+          "route-aggregation",
+          "supernetting"
+        ],
+        "question": "Route aggregation (supernetting) là gì, có lợi gì?",
+        "answer_short": "Gộp nhiều route liền nhau thành một prefix ngắn hơn (4 × /24 → 1 × /22), làm bảng định tuyến nhỏ lại.",
+        "answer_md": "Gộp các khối liền kề thành một prefix ngắn hơn: `200.10.0.0/24` đến `200.10.3.0/24` quảng bá thành **một** dòng `200.10.0.0/22`. Không tạo thêm địa chỉ nhưng **giảm kích thước bảng định tuyến** toàn cầu, giúp Internet scale được. Điều kiện: các khối phải liền nhau và căn đúng ranh giới.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-040",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "medium",
+        "tags": [
+          "private-ip",
+          "nat",
+          "pat",
+          "cgnat"
+        ],
+        "question": "Private IP + NAT tiết kiệm địa chỉ cụ thể như thế nào?",
+        "answer_short": "Dải private dùng lại ở mọi mạng; PAT cho nhiều máy chung một IP public bằng cách đổi port; CGNAT thêm lớp NAT ở nhà mạng.",
+        "answer_md": "Ba dải private (~17,9 triệu địa chỉ) được **dùng lại ở mọi mạng nội bộ** mà không tốn địa chỉ public. **PAT** đổi IP và **port nguồn**, ghi vào bảng NAT, nên công ty 5.000 thiết bị chỉ cần 1 đến vài IP public thay vì 5.000. **CGNAT**: nhà mạng thêm lớp NAT thứ hai với dải `100.64.0.0/10`, nhiều hộ gia đình chung một IP public.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-041",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "medium",
+        "tags": [
+          "nat",
+          "tradeoffs"
+        ],
+        "question": "NAT có những nhược điểm gì?",
+        "answer_short": "Phá end-to-end, cần port forwarding (không làm được dưới CGNAT), khó P2P, khó truy vết, giới hạn bảng/port NAT.",
+        "answer_md": "Phá vỡ nguyên tắc **end-to-end**: máy ngoài không chủ động kết nối vào được, cần port forwarding (dưới CGNAT người dùng không tự cấu hình được). Ảnh hưởng P2P, game, gọi video (cần STUN/TURN). Nhiều người chung một IP nên khó truy vết, chặn một IP có thể chặn nhầm nhiều người. Router phải giữ trạng thái, số port có giới hạn (SNAT exhaustion).",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-042",
+        "source": "lesson",
+        "type": "concept",
+        "difficulty": "medium",
+        "tags": [
+          "ipv6",
+          "address-space"
+        ],
+        "question": "IPv6 lớn cỡ nào? Nó giải quyết vấn đề địa chỉ khác NAT ra sao?",
+        "answer_short": "2^128 địa chỉ; một /64 lớn gấp ~4,3 tỷ lần toàn IPv4; không cần NAT, mỗi thiết bị có IP public riêng.",
+        "answer_md": "IPv6 có **2^128 ≈ 3,4 × 10^38** địa chỉ. Một subnet chuẩn **/64** có 2^64 địa chỉ, gấp 2^32 ≈ **4,3 tỷ lần toàn bộ IPv4**. Thay vì tái sử dụng như NAT, IPv6 **mở rộng không gian** nên mỗi thiết bị có địa chỉ public riêng, khôi phục end-to-end; vẫn cần firewall vì không còn tác dụng phụ chặn kết nối vào của NAT.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-043",
+        "source": "extra",
+        "type": "concept",
+        "difficulty": "hard",
+        "tags": [
+          "pat",
+          "ports"
+        ],
+        "question": "Một IP public qua PAT phục vụ được bao nhiêu kết nối?",
+        "answer_short": "Khoảng 65.000 port mỗi giao thức, và port có thể tái sử dụng cho các đích khác nhau nên phục vụ được rất nhiều thiết bị.",
+        "answer_md": "Mỗi IP public có khoảng **65.000 port** cho mỗi giao thức (TCP, UDP). Vì kết nối được phân biệt bởi cả IP và port đích, cùng một port public có thể dùng lại cho các đích khác nhau, nên số kết nối đồng thời thực tế lớn hơn nhiều. Giới hạn thực tế phụ thuộc thiết bị NAT và cách cấp port; trên cloud, nhà cung cấp phân bổ số port SNAT cho mỗi instance, nên vẫn có thể cạn nếu không tái sử dụng kết nối.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-044",
+        "source": "extra",
+        "type": "concept",
+        "difficulty": "easy",
+        "tags": [
+          "dhcp"
+        ],
+        "question": "DHCP hoạt động thế nào?",
+        "answer_short": "4 bước DORA: Discover, Offer, Request, Acknowledge; IP có thời hạn thuê.",
+        "answer_md": "DHCP cấp IP, mask, gateway, DNS theo 4 bước **DORA**: **Discover** (client broadcast tìm server), **Offer** (server đề nghị IP), **Request** (client xin IP đó), **Acknowledge** (server xác nhận). IP có **lease** (thời hạn thuê) và được gia hạn định kỳ. Discover dùng broadcast vì lúc đó client chưa có IP.",
+        "follow_ups": []
+      },
+      {
+        "id": "q-net02-045",
+        "source": "extra",
+        "type": "concept",
+        "difficulty": "easy",
+        "tags": [
+          "static-ip",
+          "dhcp"
+        ],
+        "question": "Khi nào cần IP tĩnh thay vì IP động?",
+        "answer_short": "Khi người khác phải tìm tới bằng địa chỉ cố định: server, máy in, gateway, rule whitelist.",
+        "answer_md": "IP động phù hợp thiết bị người dùng. **IP tĩnh** (hoặc DHCP reservation) cần cho thứ phải được tìm tới bằng địa chỉ cố định: server, máy in, gateway, rule whitelist. Trên cloud thường dùng tên DNS, hoặc gắn IP tĩnh cho tài nguyên khi đối tác cần whitelist.",
+        "follow_ups": []
+      }
+    ],
+    "exercises": [
+      {
+        "id": "ex-net02-01",
+        "prompt": "Tìm network, broadcast và dải host của 192.168.5.200/27.",
+        "answer_md": "/27 block size 32; khối 0, 32, ..., 192, 224 → 200 thuộc **192–223**. Network `192.168.5.192`, broadcast `192.168.5.223`, host `.193` – `.222` (30 host)."
+      },
+      {
+        "id": "ex-net02-02",
+        "prompt": "10.10.10.10 và 10.10.10.70 có cùng mạng không nếu mask /26? Nếu /25?",
+        "answer_md": "/26 (block 64): 10 thuộc 0–63, 70 thuộc 64–127 → **khác mạng**. /25 (block 128): cả hai thuộc 0–127 → **cùng mạng**."
+      },
+      {
+        "id": "ex-net02-03",
+        "prompt": "Một mạng /16 chứa bao nhiêu mạng /24?",
+        "answer_md": "2^(24 − 16) = **256**."
+      },
+      {
+        "id": "ex-net02-04",
+        "prompt": "Cần subnet cho 100 máy trên Azure. Prefix nhỏ nhất đáp ứng là gì?",
+        "answer_md": "Cần 100 + 5 = 105 địa chỉ; 2^7 = 128 ≥ 105 → **/25** (123 địa chỉ dùng được)."
+      },
+      {
+        "id": "ex-net02-05",
+        "prompt": "Rút gọn IPv6 fe80:0000:0000:0000:0202:b3ff:fe1e:8329.",
+        "answer_md": "`fe80::202:b3ff:fe1e:8329`."
+      },
+      {
+        "id": "ex-net02-06",
+        "prompt": "172.15.1.1, 10.255.0.1, 192.169.1.1: địa chỉ nào private?",
+        "answer_md": "Chỉ **10.255.0.1**. 172.15 nằm ngoài 172.16–172.31; 192.169 nằm ngoài 192.168."
+      },
+      {
+        "id": "ex-net02-07",
+        "prompt": "Máy 10.0.0.50/24, gateway 10.0.0.1, gửi tới 10.0.1.50. Trình bày từng bước: so sánh mạng, ARP hỏi ai, MAC đích và IP đích trong frame.",
+        "answer_md": "Mạng mình `10.0.0.0`; `10.0.1.50 AND 255.255.255.0 = 10.0.1.0` → **khác** → gửi qua gateway. ARP hỏi MAC của **10.0.0.1**. Frame: **MAC đích = MAC gateway**, **IP đích = 10.0.1.50**."
+      },
+      {
+        "id": "ex-net02-08",
+        "prompt": "Cũng câu trên nhưng mask là /16. Kết quả thay đổi thế nào?",
+        "answer_md": "`10.0.0.50 AND 255.255.0.0 = 10.0.0.0`, `10.0.1.50 AND 255.255.0.0 = 10.0.0.0` → **bằng nhau** → gửi trực tiếp. ARP hỏi MAC của **10.0.1.50**; MAC đích là MAC máy đó."
+      },
+      {
+        "id": "ex-net02-09",
+        "prompt": "Bảng định tuyến: 172.16.0.0/12 → A, 172.16.8.0/21 → B, 0.0.0.0/0 → C. Gói tới 172.16.10.5, 172.20.0.1, 1.1.1.1 đi đâu?",
+        "answer_md": "`172.16.10.5`: /21 có block 8 ở octet 3 → khối 8–15, 10 thuộc khối này → khớp /12 và /21 → **B**. `172.20.0.1`: chỉ khớp /12 → **A**. `1.1.1.1`: chỉ khớp /0 → **C**."
+      },
+      {
+        "id": "ex-net02-10",
+        "prompt": "Công ty có 3 phòng: 60, 25, 10 máy, được cấp 192.168.50.0/24. Chia bằng VLSM (xếp lớn trước).",
+        "answer_md": "60 máy cần 62 → **/26**: `192.168.50.0/26` (.1–.62). 25 máy cần 27 → **/27**: `192.168.50.64/27` (.65–.94). 10 máy cần 12 → **/28**: `192.168.50.96/28` (.97–.110). Còn dư từ `192.168.50.112` trở đi."
+      },
+      {
+        "id": "ex-net02-11",
+        "prompt": "Công ty cần 1.000 IP public. Classful cấp gì, CIDR cấp gì, lãng phí bao nhiêu mỗi cách?",
+        "answer_md": "Classful: lớp B 65.536 → lãng phí ~64.536. CIDR: 1.000 + 2 = 1.002 → 2^10 = 1.024 → **/22**, lãng phí 22 (cộng 2 địa chỉ đặc biệt)."
+      }
+    ],
+    "quiz": [
+      {
+        "id": "qz-net02-01",
+        "prompt": "/26 có bao nhiêu host dùng được?",
+        "options": [
+          {
+            "id": "a",
+            "text": "64"
+          },
+          {
+            "id": "b",
+            "text": "62"
+          },
+          {
+            "id": "c",
+            "text": "30"
+          },
+          {
+            "id": "d",
+            "text": "126"
+          }
+        ],
+        "correct_option_id": "b",
+        "explanation": "2^6 − 2 = 62."
+      },
+      {
+        "id": "qz-net02-02",
+        "prompt": "Khi gửi gói tin tới máy khác mạng, MAC đích trong frame là của ai?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Máy đích cuối cùng"
+          },
+          {
+            "id": "b",
+            "text": "Default gateway"
+          },
+          {
+            "id": "c",
+            "text": "DNS server"
+          },
+          {
+            "id": "d",
+            "text": "Broadcast FF:FF:FF:FF:FF:FF"
+          }
+        ],
+        "correct_option_id": "b",
+        "explanation": "MAC dùng cho chặng kế tiếp, tức gateway; IP đích vẫn là máy cuối."
+      },
+      {
+        "id": "qz-net02-03",
+        "prompt": "Địa chỉ nào là private?",
+        "options": [
+          {
+            "id": "a",
+            "text": "172.32.0.1"
+          },
+          {
+            "id": "b",
+            "text": "192.169.0.1"
+          },
+          {
+            "id": "c",
+            "text": "172.31.255.1"
+          },
+          {
+            "id": "d",
+            "text": "11.0.0.1"
+          }
+        ],
+        "correct_option_id": "c",
+        "explanation": "172.16.0.0/12 kéo dài tới 172.31.255.255."
+      },
+      {
+        "id": "qz-net02-04",
+        "prompt": "Thấy IP 169.254.x.x trên máy, nguyên nhân thường gặp nhất?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Bị hack"
+          },
+          {
+            "id": "b",
+            "text": "Không xin được IP từ DHCP"
+          },
+          {
+            "id": "c",
+            "text": "Đang dùng IPv6"
+          },
+          {
+            "id": "d",
+            "text": "Đang chạy Docker"
+          }
+        ],
+        "correct_option_id": "b",
+        "explanation": "Link-local được tự gán khi DHCP thất bại."
+      },
+      {
+        "id": "qz-net02-05",
+        "prompt": "Phương pháp nào thực sự tạo thêm không gian địa chỉ?",
+        "options": [
+          {
+            "id": "a",
+            "text": "CIDR"
+          },
+          {
+            "id": "b",
+            "text": "NAT"
+          },
+          {
+            "id": "c",
+            "text": "VLSM"
+          },
+          {
+            "id": "d",
+            "text": "IPv6"
+          }
+        ],
+        "correct_option_id": "d",
+        "explanation": "CIDR/VLSM cấp vừa đủ, NAT tái sử dụng; chỉ IPv6 mở rộng lên 2^128."
+      },
+      {
+        "id": "qz-net02-06",
+        "prompt": "Route nào được chọn cho đích 10.1.2.3: 10.0.0.0/8, 10.1.0.0/16, 0.0.0.0/0?",
+        "options": [
+          {
+            "id": "a",
+            "text": "10.0.0.0/8"
+          },
+          {
+            "id": "b",
+            "text": "10.1.0.0/16"
+          },
+          {
+            "id": "c",
+            "text": "0.0.0.0/0"
+          },
+          {
+            "id": "d",
+            "text": "Ngẫu nhiên"
+          }
+        ],
+        "correct_option_id": "b",
+        "explanation": "Longest prefix match: /16 cụ thể nhất."
+      },
+      {
+        "id": "qz-net02-07",
+        "prompt": "Máy so sánh mạng bằng subnet mask của ai?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Của máy đích"
+          },
+          {
+            "id": "b",
+            "text": "Của router"
+          },
+          {
+            "id": "c",
+            "text": "Của chính nó"
+          },
+          {
+            "id": "d",
+            "text": "Của DNS server"
+          }
+        ],
+        "correct_option_id": "c",
+        "explanation": "Máy không biết mask của bên kia; nó dùng mask của mình."
+      },
+      {
+        "id": "qz-net02-08",
+        "prompt": "Subnet /24 trên Azure có bao nhiêu địa chỉ dùng được?",
+        "options": [
+          {
+            "id": "a",
+            "text": "256"
+          },
+          {
+            "id": "b",
+            "text": "254"
+          },
+          {
+            "id": "c",
+            "text": "251"
+          },
+          {
+            "id": "d",
+            "text": "250"
+          }
+        ],
+        "correct_option_id": "c",
+        "explanation": "Azure giữ lại 5 địa chỉ mỗi subnet."
+      }
+    ],
+    "key_takeaways": [
+      "IP gồm phần mạng và phần host; subnet mask (/n) xác định ranh giới.",
+      "Số địa chỉ = 2^(32 − n); tính nhanh bằng block size = 256 − mask.",
+      "Máy so sánh (IP AND mask) của mình với (IP đích AND mask mình): cùng mạng gửi thẳng qua ARP, khác mạng gửi cho gateway; IP đích không đổi, MAC đích là gateway.",
+      "OS và router dùng routing table với longest prefix match; 0.0.0.0/0 là default route.",
+      "Ba cách xử lý cạn kiệt IPv4: CIDR/VLSM cấp vừa đủ, Private + NAT/PAT tái sử dụng, IPv6 mở rộng; dùng bổ sung cho nhau.",
+      "NAT chặn kết nối vào: webhook cần tunnel, đối tác cần outbound IP, coi chừng SNAT port exhaustion.",
+      "Trên cloud và Docker, lên kế hoạch dải IP từ đầu để tránh chồng lấn; chia subnet để phân quyền bảo mật."
+    ],
+    "references": [
+      {
+        "title": "What is a subnet? – Cloudflare Learning Center",
+        "url": "https://www.cloudflare.com/learning/network-layer/what-is-a-subnet/",
+        "type": "article",
+        "note": "Giải thích subnet dễ hiểu."
+      },
+      {
+        "title": "What is NAT? / Network layer – Cloudflare Learning Center",
+        "url": "https://www.cloudflare.com/learning/",
+        "type": "article",
+        "note": "Tìm các bài về NAT, IPv6 trong mục Network layer."
+      },
+      {
+        "title": "Azure Virtual Network FAQ – Microsoft Learn",
+        "url": "https://learn.microsoft.com/en-us/azure/virtual-network/virtual-networks-faq",
+        "type": "docs",
+        "note": "Địa chỉ bị giữ lại trong subnet, kích thước subnet."
+      },
+      {
+        "title": "RFC 1918 – Address Allocation for Private Internets",
+        "url": "https://datatracker.ietf.org/doc/html/rfc1918",
+        "type": "standard",
+        "note": "Định nghĩa các dải private."
+      },
+      {
+        "title": "Computer Networking: A Top-Down Approach (Kurose & Ross)",
+        "url": "https://gaia.cs.umass.edu/kurose_ross/",
+        "type": "book",
+        "note": "Chương về Network Layer: IP, CIDR, NAT, IPv6."
+      }
+    ],
+    "next_chapter": {
+      "id": "network-03",
+      "title": "TCP và UDP"
+    }
+  }
+}

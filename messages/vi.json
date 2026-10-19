@@ -97,6 +97,27 @@
       "scenario": "Tình huống",
       "behavioral": "Hành vi"
     },
+    "workedExamples": "Ví dụ từng bước",
+    "workedExamplesHint": "Tự giải trước, sau đó mở từng bước để đối chiếu.",
+    "stepsProgress": "{shown}/{total} bước",
+    "showFirstStep": "Xem bước đầu",
+    "showNextStep": "Bước tiếp",
+    "showAllSteps": "Xem tất cả",
+    "hideSteps": "Ẩn lại",
+    "sectionType": {
+      "deep_dive": "Chuyên sâu",
+      "worked_examples": "Luyện tập",
+      "practice": "Thực tế",
+      "summary": "Tổng kết"
+    },
+    "nat": {
+      "inside": "Mạng nội bộ (private)",
+      "router": "Router NAT / PAT",
+      "publicIp": "IP public",
+      "insideCol": "Bên trong",
+      "outsideCol": "Bên ngoài",
+      "server": "Server"
+    },
     "exercises": "Bài tập tự kiểm tra",
     "showSolution": "Xem đáp án",
     "quiz": "Trắc nghiệm",

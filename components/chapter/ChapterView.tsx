@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AlertTriangle, BookOpen, Clock, ExternalLink, HelpCircle, Lightbulb, Server, Target } from "lucide-react";
+import { AlertTriangle, BookOpen, Clock, ExternalLink, HelpCircle, Lightbulb, Microscope, Server, Target } from "lucide-react";
 import {
   CHAPTER_ANCHORS,
   hasQuickRef,
@@ -8,8 +8,10 @@ import {
   type ChapterSection,
   type Labeler,
 } from "@/lib/chapter";
+import { cn } from "@/lib/cn";
 import { Md, MdInline } from "./Md";
-import { EncapsulationDiagram } from "./EncapsulationDiagram";
+import { ChapterDiagram } from "./ChapterDiagram";
+import { WorkedExamples } from "./WorkedExamples";
 import { QuestionList } from "./QuestionList";
 import { Quiz } from "./Quiz";
 
@@ -28,7 +30,7 @@ export function ChapterView({ chapter, labels }: ChapterViewProps) {
       <Overview chapter={chapter} L={L} />
 
       {sections.map((s) => (
-        <SectionBlock key={s.id} section={s} chapter={chapter} L={L}>
+        <SectionBlock key={s.id} section={s} chapter={chapter} labels={labels} L={L}>
           {(s.question_ids ?? []).length > 0 && (
             <RelatedQuestions
               questions={(s.question_ids ?? []).flatMap((id) => questionsById.get(id) ?? [])}
@@ -189,18 +191,42 @@ function Chips({ items }: { items: string[] }) {
 function SectionBlock({
   section: s,
   chapter,
+  labels,
   L,
   children,
 }: {
   section: ChapterSection;
   chapter: Chapter;
+  labels: Record<string, string>;
   L: Labeler;
   children?: ReactNode;
 }) {
   const diagram = s.diagram_ref ? chapter.diagrams?.[s.diagram_ref] : undefined;
+  const deepDive = s.type === "deep_dive";
+  const typeLabel = s.type ? labels[`sectionType.${s.type}`] : undefined;
 
   return (
-    <section id={s.id} className="scroll-mt-24">
+    <section
+      id={s.id}
+      className={cn(
+        "scroll-mt-24",
+        deepDive &&
+          "rounded-2xl border border-violet-200 bg-violet-50/40 p-5 sm:p-6 dark:border-violet-900/70 dark:bg-violet-950/20"
+      )}
+    >
+      {typeLabel && (
+        <span
+          className={cn(
+            "mb-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider",
+            deepDive
+              ? "bg-violet-600 text-white"
+              : "bg-zinc-100 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400"
+          )}
+        >
+          {deepDive && <Microscope className="h-3 w-3" />}
+          {typeLabel}
+        </span>
+      )}
       <h2 className="flex items-center gap-3 text-2xl font-bold tracking-tight">
         {s.layer && (
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-900 text-base font-bold text-white dark:bg-white dark:text-zinc-900">
@@ -237,8 +263,14 @@ function SectionBlock({
           </div>
         )}
 
-        {diagram && <EncapsulationDiagram diagram={diagram} />}
+        {s.table && <DataTable columns={s.table.columns} rows={s.table.rows} firstColMono />}
+        {s.comparison_table && <ComparisonTable table={s.comparison_table} />}
+
+        {diagram && <ChapterDiagram diagram={diagram} L={L} />}
         {s.walkthrough && <Walkthrough w={s.walkthrough} L={L} />}
+        {s.worked_examples && s.worked_examples.length > 0 && (
+          <WorkedExamples examples={s.worked_examples} labels={labels} />
+        )}
 
         {s.examples && s.examples.length > 0 && (
           <div>
@@ -437,6 +469,44 @@ function DataTable({
                     (j === 0 && firstColMono ? "font-mono text-xs font-medium " : "") +
                     (j === 0 && firstColStrong ? "font-medium " : "")
                   }
+                >
+                  <MdInline text={cell} />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Options side by side: the first column names the criterion, the header row the options. */
+function ComparisonTable({ table }: { table: NonNullable<ChapterSection["comparison_table"]> }) {
+  return (
+    <div className="overflow-x-auto rounded-xl border border-brand-200 dark:border-brand-900">
+      <table className="w-full min-w-[32rem] text-left text-sm">
+        <thead className="bg-brand-50 text-xs uppercase tracking-wider text-brand-800 dark:bg-brand-950/40 dark:text-brand-200">
+          <tr>
+            {table.columns.map((c, j) => (
+              <th key={c} className={cn("px-3 py-2.5 font-semibold", j > 0 && "border-l border-brand-100 dark:border-brand-900")}>
+                {c}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-900">
+          {table.rows.map((r, i) => (
+            <tr key={i}>
+              {r.map((cell, j) => (
+                <td
+                  key={j}
+                  className={cn(
+                    "px-3 py-2 align-top leading-6",
+                    j === 0
+                      ? "bg-zinc-50 font-medium text-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-300"
+                      : "border-l border-zinc-100 dark:border-zinc-900"
+                  )}
                 >
                   <MdInline text={cell} />
                 </td>

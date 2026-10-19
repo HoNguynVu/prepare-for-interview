@@ -1,4 +1,4 @@
-import type { ChapterDiagram } from "@/lib/chapter";
+import type { EncapsulationDiagramData } from "@/lib/chapter";
 
 /** Each distinct header label gets its own colour; application data is always green. */
 const HEADER_COLORS = [
@@ -10,7 +10,7 @@ const HEADER_COLORS = [
 const DATA_COLOR =
   "border-emerald-300 bg-emerald-100 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-200";
 
-export function EncapsulationDiagram({ diagram }: { diagram: ChapterDiagram }) {
+export function EncapsulationDiagram({ diagram }: { diagram: EncapsulationDiagramData }) {
   const colorOf = new Map<string, string>();
   const colorFor = (label: string, role: string) => {
     if (role === "data") return DATA_COLOR;
