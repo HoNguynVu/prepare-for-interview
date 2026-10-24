@@ -1,10 +1,14 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { AlertTriangle, BookOpen, Clock, ExternalLink, HelpCircle, Lightbulb, Microscope, Server, Target } from "lucide-react";
 import {
   CHAPTER_ANCHORS,
   hasQuickRef,
   makeLabeler,
+  chapterDiagramLinks,
+  sectionDiagrams,
   type Chapter,
+  type ChapterLink,
   type ChapterSection,
   type Labeler,
 } from "@/lib/chapter";
@@ -14,20 +18,23 @@ import { ChapterDiagram } from "./ChapterDiagram";
 import { WorkedExamples } from "./WorkedExamples";
 import { QuestionList } from "./QuestionList";
 import { Quiz } from "./Quiz";
+import { DiagramLinks } from "./DiagramLinks";
 
 interface ChapterViewProps {
   chapter: Chapter;
   labels: Record<string, string>;
+  chapterLinks?: Record<string, ChapterLink>;
 }
 
-export function ChapterView({ chapter, labels }: ChapterViewProps) {
+export function ChapterView({ chapter, labels, chapterLinks = {} }: ChapterViewProps) {
   const L = makeLabeler(labels);
   const questionsById = new Map(chapter.questions.map((q) => [q.id, q]));
   const sections = [...chapter.sections].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const diagramLinks = chapterDiagramLinks(chapter);
 
   return (
     <div className="space-y-14">
-      <Overview chapter={chapter} L={L} />
+      <Overview chapter={chapter} chapterLinks={chapterLinks} L={L} />
 
       {sections.map((s) => (
         <SectionBlock key={s.id} section={s} chapter={chapter} labels={labels} L={L}>
@@ -35,6 +42,7 @@ export function ChapterView({ chapter, labels }: ChapterViewProps) {
             <RelatedQuestions
               questions={(s.question_ids ?? []).flatMap((id) => questionsById.get(id) ?? [])}
               labels={labels}
+              diagramLinks={diagramLinks}
               L={L}
             />
           )}
@@ -45,7 +53,7 @@ export function ChapterView({ chapter, labels }: ChapterViewProps) {
 
       {chapter.questions.length > 0 && (
         <Block id={CHAPTER_ANCHORS.questionBank} title={L("questionBank")} subtitle={L("questionBankHint", { count: chapter.questions.length })}>
-          <QuestionList questions={chapter.questions} labels={labels} bank />
+          <QuestionList questions={chapter.questions} labels={labels} diagramLinks={diagramLinks} bank />
         </Block>
       )}
 
@@ -63,6 +71,7 @@ export function ChapterView({ chapter, labels }: ChapterViewProps) {
                     {L("showSolution")}
                   </summary>
                   <Md text={ex.answer_md} className="mt-2 rounded-lg bg-zinc-50 p-3 text-sm dark:bg-zinc-900" />
+                  <div className="mt-3"><DiagramLinks refs={ex.diagram_refs} links={diagramLinks} L={L} /></div>
                 </details>
               </li>
             ))}
@@ -97,7 +106,7 @@ export function ChapterView({ chapter, labels }: ChapterViewProps) {
         <Block id={CHAPTER_ANCHORS.references} title={L("references")}>
           <ul className="space-y-2">
             {chapter.references.map((r) => (
-              <li key={r.url}>
+              <li key={r.url} id={r.id ? `reference-${r.id}` : undefined} className="scroll-mt-24">
                 <a
                   href={r.url}
                   target="_blank"
@@ -123,7 +132,12 @@ export function ChapterView({ chapter, labels }: ChapterViewProps) {
 
       {chapter.next_chapter && (
         <p className="rounded-lg border border-dashed border-zinc-300 p-4 text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
-          <span className="font-semibold">{L("nextChapter")}:</span> {chapter.next_chapter.title}
+          <span className="font-semibold">{L("nextChapter")}:</span>{" "}
+          {chapterLinks[chapter.next_chapter.id] ? (
+            <Link href={chapterLinks[chapter.next_chapter.id].href} className="text-brand-600 hover:underline dark:text-brand-400">
+              {chapter.next_chapter.title}
+            </Link>
+          ) : chapter.next_chapter.title}
         </p>
       )}
     </div>
@@ -142,7 +156,8 @@ function Block({ id, title, subtitle, children }: { id: string; title: string; s
   );
 }
 
-function Overview({ chapter, L }: { chapter: Chapter; L: Labeler }) {
+function Overview({ chapter, chapterLinks, L }: { chapter: Chapter; chapterLinks: Record<string, ChapterLink>; L: Labeler }) {
+  const prerequisites = (chapter.prerequisites ?? []).flatMap((id) => chapterLinks[id] ? [chapterLinks[id]] : []);
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2 text-xs text-zinc-600 dark:text-zinc-400">
@@ -157,6 +172,16 @@ function Overview({ chapter, L }: { chapter: Chapter; L: Labeler }) {
           {L("questionsCount", { count: chapter.questions.length })}
         </span>
       </div>
+      {prerequisites.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="font-medium text-zinc-500">{L("prerequisites")}:</span>
+          {prerequisites.map((lesson) => (
+            <Link key={lesson.href} href={lesson.href} className="rounded-md border border-zinc-200 px-2 py-1 text-brand-600 hover:underline dark:border-zinc-700 dark:text-brand-400">
+              {lesson.title}
+            </Link>
+          ))}
+        </div>
+      )}
       {chapter.learning_objectives && chapter.learning_objectives.length > 0 && (
         <div className="rounded-xl border border-brand-200 bg-brand-50 p-5 dark:border-brand-900 dark:bg-brand-950/30">
           <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-300">
@@ -201,7 +226,8 @@ function SectionBlock({
   L: Labeler;
   children?: ReactNode;
 }) {
-  const diagram = s.diagram_ref ? chapter.diagrams?.[s.diagram_ref] : undefined;
+  const diagrams = sectionDiagrams(s, chapter);
+  const references = (s.reference_ids ?? []).flatMap((id) => chapter.references?.find((reference) => reference.id === id) ?? []);
   const deepDive = s.type === "deep_dive";
   const typeLabel = s.type ? labels[`sectionType.${s.type}`] : undefined;
 
@@ -266,7 +292,34 @@ function SectionBlock({
         {s.table && <DataTable columns={s.table.columns} rows={s.table.rows} firstColMono />}
         {s.comparison_table && <ComparisonTable table={s.comparison_table} />}
 
-        {diagram && <ChapterDiagram diagram={diagram} L={L} />}
+        {diagrams.map(({ id, diagram, image }) => (
+          <div key={id} id={`${s.id}-${id}`} className="scroll-mt-24">
+            <ChapterDiagram diagram={diagram} image={image} L={L} />
+          </div>
+        ))}
+        {!!s.code_examples?.length && (
+          <div className="space-y-4">
+            <SubHeading>{L("codeExamples")}</SubHeading>
+            {s.code_examples.map((example, i) => (
+              <div key={i} className="space-y-2">
+                <h4 className="text-sm font-semibold">{example.title}</h4>
+                <pre className="overflow-x-auto rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-[13px] leading-6 dark:border-zinc-800 dark:bg-zinc-900">
+                  <code className={`language-${example.language}`}>{example.code}</code>
+                </pre>
+                {example.note && <Md text={example.note} className="text-sm text-zinc-500" />}
+              </div>
+            ))}
+          </div>
+        )}
+        {!!s.commands?.length && (
+          <div>
+            <SubHeading>{L("debugCommands")}</SubHeading>
+            <DataTable
+              columns={[L("platform"), L("command"), L("purpose")]}
+              rows={s.commands.map((command) => [command.platform, `\`${command.command}\``, command.purpose])}
+            />
+          </div>
+        )}
         {s.walkthrough && <Walkthrough w={s.walkthrough} L={L} />}
         {s.worked_examples && s.worked_examples.length > 0 && (
           <WorkedExamples examples={s.worked_examples} labels={labels} />
@@ -322,6 +375,16 @@ function SectionBlock({
           </div>
         )}
 
+        {references.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="font-medium text-zinc-500">{L("references")}:</span>
+            {references.map((reference) => (
+              <a key={reference.id} href={`#reference-${reference.id}`} className="text-brand-600 hover:underline dark:text-brand-400">
+                {reference.title}
+              </a>
+            ))}
+          </div>
+        )}
         {children}
       </div>
     </section>
@@ -417,10 +480,12 @@ function Walkthrough({ w, L }: { w: NonNullable<ChapterSection["walkthrough"]>; 
 function RelatedQuestions({
   questions,
   labels,
+  diagramLinks,
   L,
 }: {
   questions: Chapter["questions"];
   labels: Record<string, string>;
+  diagramLinks: Record<string, ChapterLink>;
   L: Labeler;
 }) {
   if (questions.length === 0) return null;
@@ -430,7 +495,7 @@ function RelatedQuestions({
         <HelpCircle className="h-4 w-4 text-brand-500" />
         {L("relatedQuestions")}
       </h3>
-      <QuestionList questions={questions} labels={labels} />
+      <QuestionList questions={questions} labels={labels} diagramLinks={diagramLinks} />
     </div>
   );
 }

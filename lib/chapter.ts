@@ -17,6 +17,7 @@ export interface ChapterQuestion {
   answer_short: string;
   answer_md: string;
   follow_ups?: string[];
+  diagram_refs?: string[];
 }
 
 export interface ChapterLayerInfo {
@@ -52,6 +53,18 @@ export interface WorkedExample {
   steps_md: string[];
 }
 
+export interface ChapterImage {
+  id?: string;
+  diagram_ref: string;
+  alt?: string;
+  caption?: string;
+}
+
+export interface ChapterLink {
+  href: string;
+  title: string;
+}
+
 export interface ChapterSection {
   id: string;
   order?: number;
@@ -66,6 +79,11 @@ export interface ChapterSection {
   common_errors?: string[];
   backend_relevance?: string;
   diagram_ref?: string;
+  diagram_refs?: string[];
+  images?: ChapterImage[];
+  code_examples?: { language: string; title: string; code: string; note?: string }[];
+  commands?: { platform: string; command: string; purpose: string }[];
+  reference_ids?: string[];
   walkthrough?: ChapterWalkthrough;
   error_to_layer_map?: { symptom: string; layer: string; meaning: string }[];
   table?: ChapterTable;
@@ -102,7 +120,25 @@ export interface NatTableDiagramData {
   caption?: string;
 }
 
-export type ChapterDiagram = EncapsulationDiagramData | FlowchartDiagramData | NatTableDiagramData;
+/** Embedded artwork supplied by a chapter; render as an image, never injected HTML. */
+export interface ImageDiagramData {
+  type: "illustration" | "sequence" | "chart";
+  title: string;
+  description?: string;
+  caption?: string;
+  image_url: string;
+  svg_image_url?: string;
+  mime_type?: string;
+  width: number;
+  height: number;
+  alt?: string;
+  reading_steps?: string[];
+  participants?: string[];
+  messages?: { from: string; to: string; label: string; lost?: boolean }[];
+  chart_data?: { x_unit: string; y_unit: string; values: number[]; illustrative_only: boolean };
+}
+
+export type ChapterDiagram = EncapsulationDiagramData | FlowchartDiagramData | NatTableDiagramData | ImageDiagramData;
 
 export interface Chapter {
   id: string;
@@ -112,6 +148,7 @@ export interface Chapter {
   subtitle?: string;
   level?: string;
   estimated_study_minutes?: number;
+  prerequisites?: string[];
   learning_objectives?: string[];
   sections: ChapterSection[];
   summary_table?: { columns: string[]; rows: string[][]; footnote?: string };
@@ -119,7 +156,7 @@ export interface Chapter {
   header_sizes?: { header: string; size: string }[];
   diagrams?: Record<string, ChapterDiagram>;
   questions: ChapterQuestion[];
-  exercises?: { id: string; prompt: string; answer_md: string }[];
+  exercises?: { id: string; prompt: string; answer_md: string; diagram_refs?: string[] }[];
   quiz?: {
     id: string;
     prompt: string;
@@ -128,8 +165,29 @@ export interface Chapter {
     explanation?: string;
   }[];
   key_takeaways?: string[];
-  references?: { title: string; url: string; type?: string; note?: string }[];
+  references?: { id?: string; title: string; url: string; type?: string; note?: string }[];
   next_chapter?: { id: string; title: string };
+}
+
+/** New chapters may name several diagrams; the original single ref remains a fallback. */
+export function sectionDiagrams(section: ChapterSection, chapter: Chapter) {
+  const refs = [...(section.diagram_refs ?? []), ...(section.images ?? []).map((image) => image.diagram_ref)];
+  if (!refs.length && section.diagram_ref) refs.push(section.diagram_ref);
+  return [...new Set(refs)].flatMap((id) => {
+    const diagram = chapter.diagrams?.[id];
+    return diagram ? [{ id, diagram, image: section.images?.find((image) => image.diagram_ref === id) }] : [];
+  });
+}
+
+/** Link questions to the first illustration of a diagram without duplicating its image. */
+export function chapterDiagramLinks(chapter: Chapter): Record<string, ChapterLink> {
+  const links: Record<string, ChapterLink> = {};
+  for (const section of [...chapter.sections].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))) {
+    for (const { id, diagram } of sectionDiagrams(section, chapter)) {
+      links[id] ??= { href: `#${section.id}-${id}`, title: "title" in diagram ? diagram.title : section.title };
+    }
+  }
+  return links;
 }
 
 /** "beginner-intermediate" -> "beginner" so it fits the site's Level groups. */
@@ -143,7 +201,12 @@ export function chapterSearchText(c: Chapter): string {
   const parts: string[] = [c.subtitle ?? "", ...(c.learning_objectives ?? [])];
   for (const s of c.sections) {
     parts.push(s.title, s.content_md ?? "", ...(s.key_points ?? []));
-    for (const ex of s.worked_examples ?? []) parts.push(ex.title);
+    for (const ex of s.worked_examples ?? []) parts.push(ex.title, ...ex.steps_md);
+    for (const ex of s.code_examples ?? []) parts.push(ex.title, ex.code, ex.note ?? "");
+    for (const command of s.commands ?? []) parts.push(command.platform, command.command, command.purpose);
+    for (const table of [s.table, s.comparison_table]) {
+      if (table) parts.push(...table.columns, ...table.rows.flat());
+    }
   }
   for (const q of c.questions) parts.push(q.question, q.answer_short);
   return parts.join("\n").replace(/[*`]/g, "");

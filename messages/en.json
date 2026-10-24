@@ -39,6 +39,13 @@
     "advanced": "Advanced"
   },
   "chapter": {
+    "prerequisites": "Prerequisites",
+    "relatedDiagrams": "Related diagrams",
+    "codeExamples": "Code examples",
+    "debugCommands": "Debug commands",
+    "platform": "Platform",
+    "command": "Command",
+    "purpose": "Purpose",
     "objectives": "Learning objectives",
     "studyMinutes": "~{count} min",
     "questionsCount": "{count} questions",

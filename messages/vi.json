@@ -39,6 +39,13 @@
     "advanced": "Nâng cao"
   },
   "chapter": {
+    "prerequisites": "Kiến thức cần có",
+    "relatedDiagrams": "Sơ đồ liên quan",
+    "codeExamples": "Ví dụ code",
+    "debugCommands": "Lệnh debug",
+    "platform": "Môi trường",
+    "command": "Lệnh",
+    "purpose": "Mục đích",
     "objectives": "Mục tiêu học tập",
     "studyMinutes": "~{count} phút",
     "questionsCount": "{count} câu hỏi",

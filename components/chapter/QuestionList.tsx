@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
-import type { ChapterQuestion } from "@/lib/chapter";
+import type { ChapterLink, ChapterQuestion } from "@/lib/chapter";
 import { makeLabeler, type Labeler } from "@/lib/chapter";
 import { cn } from "@/lib/cn";
 import { Md, MdInline } from "./Md";
+import { DiagramLinks } from "./DiagramLinks";
 
 const DIFFICULTY_STYLE: Record<string, string> = {
   easy: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300",
@@ -19,9 +20,10 @@ interface QuestionListProps {
   labels: Record<string, string>;
   /** Full question bank: adds filters and flashcard mode. */
   bank?: boolean;
+  diagramLinks?: Record<string, ChapterLink>;
 }
 
-export function QuestionList({ questions, labels, bank = false }: QuestionListProps) {
+export function QuestionList({ questions, labels, bank = false, diagramLinks = {} }: QuestionListProps) {
   const L = makeLabeler(labels);
   const [difficulty, setDifficulty] = useState("all");
   const [source, setSource] = useState("all");
@@ -74,7 +76,7 @@ export function QuestionList({ questions, labels, bank = false }: QuestionListPr
       ) : (
         <ul className="space-y-2">
           {visible.map((q) => (
-            <QuestionItem key={`${q.id}-${flashcard}`} q={q} L={L} flashcard={flashcard} />
+            <QuestionItem key={`${q.id}-${flashcard}`} q={q} L={L} flashcard={flashcard} diagramLinks={diagramLinks} />
           ))}
         </ul>
       )}
@@ -125,7 +127,7 @@ function FilterRow({
   );
 }
 
-function QuestionItem({ q, L, flashcard }: { q: ChapterQuestion; L: Labeler; flashcard: boolean }) {
+function QuestionItem({ q, L, flashcard, diagramLinks }: { q: ChapterQuestion; L: Labeler; flashcard: boolean; diagramLinks: Record<string, ChapterLink> }) {
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState(false);
   const showDetail = !flashcard || detail;
@@ -173,6 +175,7 @@ function QuestionItem({ q, L, flashcard }: { q: ChapterQuestion; L: Labeler; fla
           {showDetail ? (
             <>
               <Md text={q.answer_md} />
+              <DiagramLinks refs={q.diagram_refs} links={diagramLinks} L={L} />
               {q.follow_ups && q.follow_ups.length > 0 && (
                 <div>
                   <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{L("followUps")}</div>

@@ -4,7 +4,7 @@ import { ChevronRight, ChevronLeft } from "lucide-react";
 import { locales, topics, topicMap, type Locale, type TopicId } from "@/lib/navigation";
 import { getLesson, getLessonSlugs, getAdjacentLessons } from "@/lib/content";
 import { getMessages, t } from "@/lib/i18n";
-import { chapterLabels, chapterToc, makeLabeler } from "@/lib/chapter";
+import { chapterLabels, chapterToc, makeLabeler, type ChapterLink } from "@/lib/chapter";
 import { MDXContent } from "@/components/MDXContent";
 import { ChapterView } from "@/components/chapter/ChapterView";
 import { TableOfContents, type TocItem } from "@/components/TableOfContents";
@@ -58,6 +58,15 @@ export default function LessonPage({ params }: { params: { locale: string; topic
   if (!lesson) notFound();
   const { prev, next } = getAdjacentLessons(locale, topicId, params.slug);
   const labels = lesson.chapter ? chapterLabels(m) : {};
+  const chapterLinks: Record<string, ChapterLink> = {};
+  if (lesson.chapter) {
+    for (const slug of getLessonSlugs(locale, topicId)) {
+      const related = getLesson(locale, topicId, slug);
+      if (related?.chapter) {
+        chapterLinks[related.chapter.id] = { href: `/${locale}/topic/${topicId}/${slug}`, title: related.title };
+      }
+    }
+  }
   const toc = lesson.chapter ? chapterToc(lesson.chapter, makeLabeler(labels)) : extractToc(lesson.content);
 
   return (
@@ -98,7 +107,7 @@ export default function LessonPage({ params }: { params: { locale: string; topic
         )}
 
         {lesson.chapter ? (
-          <ChapterView chapter={lesson.chapter} labels={labels} />
+          <ChapterView chapter={lesson.chapter} labels={labels} chapterLinks={chapterLinks} />
         ) : (
           <div className="prose-app">
             <MDXContent source={lesson.content} />

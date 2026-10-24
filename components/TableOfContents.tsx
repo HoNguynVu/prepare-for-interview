@@ -34,9 +34,9 @@ export function TableOfContents({ items, label }: { items: TocItem[]; label: str
   if (items.length === 0) return null;
 
   return (
-    <nav aria-label="Table of contents" className="text-sm">
-      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{label}</div>
-      <ul className="space-y-1.5 border-l border-zinc-200 dark:border-zinc-800">
+    <nav aria-label={label} className="flex max-h-[calc(100dvh-6rem)] flex-col text-sm">
+      <div className="mb-2 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{label}</div>
+      <ul className="min-h-0 space-y-1.5 overflow-y-auto border-l border-zinc-200 pb-1 pr-2 dark:border-zinc-800">
         {items.map((it) => (
           <li key={it.id} style={{ paddingLeft: `${(it.depth - 1) * 12}px` }}>
             <a
